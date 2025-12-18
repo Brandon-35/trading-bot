@@ -47,51 +47,53 @@ const GlobalControls: React.FC<GlobalControlsProps> = ({
   };
 
   return (
-    <div className="sticky top-0 z-50 w-full glass-panel border-b border-slate-200/60 px-4 py-3 shadow-sm mb-4">
-      <div className="max-w-7xl mx-auto flex flex-col xl:flex-row items-center justify-between gap-4">
+    <div className="sticky top-0 z-50 w-full bg-white/80 backdrop-blur-md border-b border-slate-200 px-4 py-3 shadow-sm mb-4">
+      <div className="max-w-[1920px] mx-auto flex flex-col xl:flex-row items-center justify-between gap-4">
         
         {/* Logo & Title */}
-        <div className="flex items-center gap-2 min-w-max self-start xl:self-center">
-          <div className="p-2 bg-brand-500 rounded-lg shadow-lg shadow-brand-500/30">
-            <LayoutGrid className="w-5 h-5 text-white" />
+        <div className="flex items-center gap-3 min-w-max self-start xl:self-center">
+          <div className="flex items-center justify-center w-10 h-10 bg-gradient-to-br from-brand-500 to-brand-700 rounded-xl shadow-lg shadow-brand-500/20 text-white">
+            <LayoutGrid className="w-6 h-6" />
           </div>
-          <div className="hidden sm:block">
-            <h1 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-slate-800 to-slate-600 leading-tight">
-              CryptoSync
+          <div>
+            <h1 className="text-lg font-bold text-slate-800 leading-tight tracking-tight">
+              CryptoSync <span className="text-brand-600">Pro</span>
             </h1>
-            <p className="text-[10px] font-medium text-slate-400 leading-none">Pro Dashboard</p>
+            <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Multi-Chart Terminal</p>
           </div>
         </div>
 
         {/* Master Controls (Center) */}
         <div className="flex-1 w-full xl:w-auto flex flex-col md:flex-row items-center justify-center gap-3">
           
-          {/* Symbol Input */}
-          <form onSubmit={handleSymbolSubmit} className="relative group w-full md:w-60">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <Search className="h-4 w-4 text-slate-400 group-focus-within:text-brand-500 transition-colors" />
-            </div>
-            <input
-              type="text"
-              value={globalSymbol}
-              onChange={(e) => setGlobalSymbol(e.target.value.toUpperCase())}
-              placeholder={selectedCount > 0 ? `Sync ${selectedCount} selected...` : "Sync all symbols..."}
-              className={`block w-full pl-10 pr-3 py-2 border rounded-xl leading-5 bg-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500/50 transition-all text-sm font-medium shadow-sm ${
-                selectedCount > 0 ? 'border-brand-300 focus:border-brand-500' : 'border-slate-200 focus:border-brand-500'
-              }`}
-            />
-          </form>
+          <div className="flex items-center gap-2 w-full md:w-auto">
+             {/* Symbol Input */}
+            <form onSubmit={handleSymbolSubmit} className="relative group w-full md:w-64">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <Search className="h-4 w-4 text-slate-400 group-focus-within:text-brand-500 transition-colors" />
+                </div>
+                <input
+                type="text"
+                value={globalSymbol}
+                onChange={(e) => setGlobalSymbol(e.target.value.toUpperCase())}
+                placeholder={selectedCount > 0 ? `Sync ${selectedCount} selected charts...` : "Sync all charts..."}
+                className={`block w-full pl-10 pr-3 py-2.5 border rounded-xl leading-5 bg-slate-50 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500/30 transition-all text-sm font-semibold shadow-inner ${
+                    selectedCount > 0 ? 'border-brand-300 focus:border-brand-500 bg-brand-50/30' : 'border-slate-200 focus:border-brand-500'
+                }`}
+                />
+            </form>
+          </div>
 
           {/* Interval Toggles */}
-          <div className="flex bg-slate-100/80 p-1 rounded-xl gap-1 overflow-x-auto w-full md:w-auto no-scrollbar">
+          <div className="flex bg-slate-100 p-1 rounded-xl gap-0.5 overflow-x-auto w-full md:w-auto no-scrollbar border border-slate-200">
             {INTERVALS.map((int) => (
               <button
                 key={int.value}
                 onClick={() => handleIntervalChange(int.value)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all whitespace-nowrap ${
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${
                   globalInterval === int.value
                     ? 'bg-white text-brand-600 shadow-sm ring-1 ring-slate-200'
-                    : 'text-slate-500 hover:text-slate-700 hover:bg-white/50'
+                    : 'text-slate-500 hover:text-slate-800 hover:bg-slate-200/50'
                 }`}
               >
                 {int.label}
@@ -101,53 +103,46 @@ const GlobalControls: React.FC<GlobalControlsProps> = ({
         </div>
 
         {/* Action Tools (Right) */}
-        <div className="flex items-center gap-2 min-w-max w-full xl:w-auto justify-end border-t xl:border-t-0 border-slate-100 pt-3 xl:pt-0">
+        <div className="flex items-center gap-3 min-w-max w-full xl:w-auto justify-end border-t xl:border-t-0 border-slate-100 pt-3 xl:pt-0">
             
             {/* Selection Tools */}
-            <div className="flex items-center gap-1 mr-2 bg-slate-100/50 p-1 rounded-lg">
+            <div className="flex items-center bg-white border border-slate-200 rounded-xl p-1 shadow-sm">
               <button 
                 onClick={onSelectAll}
-                className="p-1.5 text-slate-500 hover:text-brand-600 hover:bg-white rounded-md transition-all"
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-600 hover:text-brand-600 hover:bg-slate-50 rounded-lg transition-all"
                 title="Select All"
               >
-                <CheckSquare className="w-4 h-4" />
+                <CheckSquare className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">All</span>
               </button>
+              <div className="w-px h-4 bg-slate-200 mx-1"></div>
               <button 
                 onClick={onDeselectAll}
-                className="p-1.5 text-slate-500 hover:text-slate-700 hover:bg-white rounded-md transition-all"
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-600 hover:text-slate-800 hover:bg-slate-50 rounded-lg transition-all"
                 title="Deselect All"
               >
-                <Square className="w-4 h-4" />
+                <Square className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">None</span>
               </button>
             </div>
 
-            <div className="h-6 w-px bg-slate-200 mx-1"></div>
-
             <button
                 onClick={onClearAll}
-                className="flex items-center gap-2 px-3 py-2 text-slate-500 hover:text-red-500 hover:bg-red-50 text-sm font-medium rounded-xl transition-all"
+                className="p-2.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all border border-transparent hover:border-red-100"
+                title="Clear All Charts"
             >
-                <Trash2 className="w-4 h-4" />
-                <span className="hidden lg:inline">Clear</span>
+                <Trash2 className="w-5 h-5" />
             </button>
 
             <button
                 onClick={onAddChart}
-                className="flex items-center gap-2 px-4 py-2 bg-brand-500 text-white text-sm font-medium rounded-xl hover:bg-brand-600 active:scale-95 transition-all shadow-lg shadow-brand-500/30 ml-2"
+                className="flex items-center gap-2 px-5 py-2.5 bg-brand-600 hover:bg-brand-700 text-white text-sm font-semibold rounded-xl active:scale-95 transition-all shadow-lg shadow-brand-500/20"
             >
                 <Plus className="w-4 h-4" />
-                Add
+                <span>New Chart</span>
             </button>
         </div>
       </div>
-      
-      <style>{`
-        .glass-panel {
-          background: rgba(255, 255, 255, 0.85);
-          backdrop-filter: blur(12px);
-          -webkit-backdrop-filter: blur(12px);
-        }
-      `}</style>
     </div>
   );
 };

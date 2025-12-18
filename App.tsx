@@ -1,9 +1,9 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import { ChartConfig } from './types';
 import TradingViewWidget from './components/TradingViewWidget';
 import GlobalControls from './components/GlobalControls';
 import AddChartModal from './components/AddChartModal';
-import { X, Maximize2, CheckCircle2, Settings, Moon, Sun, Eye, EyeOff } from 'lucide-react';
+import { X, Maximize2, CheckCircle2, Settings, Moon, Sun, Eye, EyeOff, GripVertical } from 'lucide-react';
 
 // Default charts to show on load
 const DEFAULT_CHARTS: ChartConfig[] = [
@@ -19,6 +19,10 @@ const App: React.FC = () => {
   const [chartToRemove, setChartToRemove] = useState<string | null>(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [openSettingsId, setOpenSettingsId] = useState<string | null>(null);
+  
+  // Drag and Drop State
+  const dragItem = useRef<number | null>(null);
+  const dragOverItem = useRef<number | null>(null);
 
   // --- Chart Management ---
 
@@ -83,7 +87,7 @@ const App: React.FC = () => {
           return { ...chart, selected: !chart.selected };
         }
         // Single select: Always select this one
-        return { ...chart, selected: true };
+        return { ...chart, selected: !chart.selected }; // Toggle on single click too for better UX
       } else {
         // For other charts
         if (isMultiSelect) {
@@ -113,6 +117,8 @@ const App: React.FC = () => {
 
       return prevCharts.map(chart => {
         // 2. Determine if this chart should be updated
+        // IF selected exists: Only update selected.
+        // IF NO selected: Update ALL.
         const shouldUpdate = hasSelection ? chart.selected : true;
 
         if (!shouldUpdate) return chart;
@@ -127,14 +133,37 @@ const App: React.FC = () => {
     });
   }, []);
 
-  // --- Layout Helper ---
-  const getGridClass = (count: number) => {
-    if (count === 1) return 'grid-cols-1 h-full';
-    if (count === 2) return 'grid-cols-1 md:grid-cols-2';
-    if (count === 3) return 'grid-cols-1 md:grid-cols-2 xl:grid-cols-3';
-    if (count === 4) return 'grid-cols-1 md:grid-cols-2'; // 2x2
-    if (count >= 5 && count <= 6) return 'grid-cols-1 md:grid-cols-2 xl:grid-cols-3';
-    return 'grid-cols-1 md:grid-cols-2 xl:grid-cols-4';
+  // --- Drag and Drop Logic ---
+
+  const handleDragStart = (e: React.DragEvent<HTMLDivElement>, position: number) => {
+    dragItem.current = position;
+    e.dataTransfer.effectAllowed = "move";
+    // Add a ghost image or styling if needed, usually browser handles it
+    e.currentTarget.classList.add('opacity-50');
+  };
+
+  const handleDragEnter = (e: React.DragEvent<HTMLDivElement>, position: number) => {
+    e.preventDefault();
+    dragOverItem.current = position;
+  };
+
+  const handleDragEnd = (e: React.DragEvent<HTMLDivElement>) => {
+    e.currentTarget.classList.remove('opacity-50');
+    
+    if (dragItem.current === null || dragOverItem.current === null) return;
+    if (dragItem.current === dragOverItem.current) return;
+
+    const copyListItems = [...charts];
+    const dragItemContent = copyListItems[dragItem.current];
+    
+    // Remove from old pos
+    copyListItems.splice(dragItem.current, 1);
+    // Insert at new pos
+    copyListItems.splice(dragOverItem.current, 0, dragItemContent);
+    
+    dragItem.current = null;
+    dragOverItem.current = null;
+    setCharts(copyListItems);
   };
 
   return (
@@ -149,58 +178,81 @@ const App: React.FC = () => {
         selectedCount={charts.filter(c => c.selected).length}
       />
 
-      <main className="flex-1 overflow-y-auto p-4 custom-scrollbar" onClick={(e) => {
-          // Optional: Click background to deselect all?
+      <main 
+        className="flex-1 overflow-y-auto p-4 custom-scrollbar" 
+        onClick={(e) => {
+          // Deselect if clicking the background grid area
           if (e.target === e.currentTarget) {
             deselectAll();
             setOpenSettingsId(null);
           }
-      }}>
-        <div className={`grid gap-4 w-full min-h-[500px] ${getGridClass(charts.length)} auto-rows-[400px] md:auto-rows-[500px]`}>
-          {charts.map((chart) => (
+        }}
+      >
+        <div className={`auto-grid w-full min-h-[500px] auto-rows-[450px]`}>
+          {charts.map((chart, index) => (
             <div 
               key={chart.id}
+              draggable
+              onDragStart={(e) => handleDragStart(e, index)}
+              onDragEnter={(e) => handleDragEnter(e, index)}
+              onDragEnd={handleDragEnd}
+              onDragOver={(e) => e.preventDefault()}
               onClick={(e) => handleChartClick(chart.id, e)}
               className={`
-                relative group bg-white rounded-2xl shadow-sm border overflow-hidden transition-all duration-200
+                relative group bg-white rounded-xl shadow-sm border overflow-hidden transition-all duration-200
+                flex flex-col h-[450px]
                 ${chart.selected 
-                    ? 'ring-2 ring-brand-500 border-brand-500 shadow-md transform scale-[1.005] z-10' 
-                    : 'border-slate-100 hover:border-slate-300 hover:shadow-md'
+                    ? 'ring-2 ring-brand-500 ring-offset-2 border-brand-500 shadow-md z-10' 
+                    : 'border-slate-200 hover:border-slate-300 hover:shadow-lg'
                 }
               `}
             >
-              {/* Header / Toolbar overlay */}
+              {/* Toolbar */}
               <div 
                 className={`
-                    absolute top-0 left-0 right-0 h-10 z-20 flex items-center justify-between px-3
-                    bg-gradient-to-b from-white via-white/90 to-transparent
-                    transition-opacity duration-200
-                    ${chart.selected || openSettingsId === chart.id ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}
+                    flex items-center justify-between px-3 py-2
+                    bg-white border-b border-slate-100 h-12 shrink-0 select-none
+                    ${chart.selected ? 'bg-brand-50/30' : ''}
                 `}
               >
-                {/* Left: Chart Info */}
-                <div className="flex items-center gap-2">
-                    {chart.selected && <CheckCircle2 className="w-4 h-4 text-brand-500" />}
-                    <span className="text-xs font-bold text-slate-700 bg-slate-100/80 backdrop-blur px-2 py-1 rounded shadow-sm border border-slate-200">
-                        {chart.symbol} <span className="text-slate-400">|</span> {chart.interval}
-                    </span>
+                {/* Left: Drag Handle & Info */}
+                <div className="flex items-center gap-2 overflow-hidden">
+                    <div className="cursor-grab active:cursor-grabbing text-slate-300 hover:text-slate-500 p-1">
+                        <GripVertical className="w-4 h-4" />
+                    </div>
+                    
+                    <div className="flex flex-col leading-tight">
+                        <span className="text-xs font-bold text-slate-700 truncate max-w-[120px]">
+                            {chart.symbol}
+                        </span>
+                        <div className="flex items-center gap-1.5">
+                            <span className="text-[10px] font-medium text-slate-500 bg-slate-100 px-1.5 rounded">
+                                {chart.interval}
+                            </span>
+                            {chart.selected && (
+                                <span className="flex items-center gap-1 text-[10px] font-bold text-brand-600 bg-brand-50 px-1.5 rounded border border-brand-100">
+                                    <CheckCircle2 className="w-3 h-3" /> Selected
+                                </span>
+                            )}
+                        </div>
+                    </div>
                 </div>
 
                 {/* Right: Actions */}
-                <div className="flex gap-1">
+                <div className="flex items-center gap-1">
                   <button 
                     onClick={(e) => {
                       e.stopPropagation();
                       setOpenSettingsId(openSettingsId === chart.id ? null : chart.id);
                     }}
-                    className={`p-1.5 rounded-md transition-colors ${openSettingsId === chart.id ? 'text-brand-500 bg-brand-50' : 'text-slate-400 hover:text-brand-500 hover:bg-brand-50'}`}
+                    className={`p-1.5 rounded-lg transition-colors ${openSettingsId === chart.id ? 'text-brand-500 bg-brand-50' : 'text-slate-400 hover:text-brand-600 hover:bg-slate-100'}`}
                     title="Settings"
                   >
                     <Settings className="w-4 h-4" />
                   </button>
                   <button 
                     onClick={(e) => initiateRemoveChart(chart.id, e)}
-                    className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-md transition-colors"
+                    className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
                     title="Remove Chart"
                   >
                     <X className="w-4 h-4" />
@@ -208,43 +260,45 @@ const App: React.FC = () => {
                 </div>
               </div>
 
-              {/* Settings Menu Overlay */}
+              {/* Settings Menu Dropdown */}
               {openSettingsId === chart.id && (
                 <div 
-                  className="absolute top-11 right-3 z-30 bg-white rounded-xl shadow-xl border border-slate-100 p-2 w-40 animate-in fade-in zoom-in-95 duration-200"
-                  onClick={(e) => e.stopPropagation()} // Prevent clicking menu from selecting chart
+                  className="absolute top-12 right-2 z-30 bg-white rounded-xl shadow-xl border border-slate-100 p-2 w-48 animate-in fade-in zoom-in-95 duration-200"
+                  onClick={(e) => e.stopPropagation()} 
                 >
-                  <div className="text-[10px] font-bold text-slate-400 mb-2 px-2 uppercase tracking-wider">Theme</div>
-                  <div className="flex flex-col gap-1">
+                  <div className="text-[10px] font-bold text-slate-400 mb-2 px-2 uppercase tracking-wider">Appearance</div>
+                  <div className="space-y-1">
                     <button 
-                      onClick={() => updateChartConfig(chart.id, { theme: 'Light' })}
-                      className={`flex items-center gap-2 px-2 py-1.5 text-xs rounded-lg transition-colors w-full text-left ${chart.theme === 'Light' ? 'bg-brand-50 text-brand-600 font-medium' : 'text-slate-600 hover:bg-slate-50'}`}
+                      onClick={() => updateChartConfig(chart.id, { theme: chart.theme === 'Light' ? 'Dark' : 'Light' })}
+                      className={`flex items-center justify-between px-2 py-1.5 text-xs rounded-lg transition-colors w-full text-left hover:bg-slate-50 text-slate-600`}
                     >
-                      <Sun className="w-3.5 h-3.5" /> Light
-                    </button>
-                    <button 
-                      onClick={() => updateChartConfig(chart.id, { theme: 'Dark' })}
-                      className={`flex items-center gap-2 px-2 py-1.5 text-xs rounded-lg transition-colors w-full text-left ${chart.theme === 'Dark' ? 'bg-slate-800 text-white font-medium' : 'text-slate-600 hover:bg-slate-50'}`}
-                    >
-                      <Moon className="w-3.5 h-3.5" /> Dark
+                      <div className="flex items-center gap-2">
+                        {chart.theme === 'Light' ? <Sun className="w-3.5 h-3.5" /> : <Moon className="w-3.5 h-3.5" />}
+                        <span>Theme</span>
+                      </div>
+                      <span className={`text-[10px] px-1.5 rounded font-medium ${chart.theme === 'Light' ? 'bg-slate-100 text-slate-500' : 'bg-slate-800 text-white'}`}>
+                        {chart.theme}
+                      </span>
                     </button>
                   </div>
 
-                  <div className="text-[10px] font-bold text-slate-400 mb-2 px-2 uppercase tracking-wider mt-3">View</div>
-                  <div className="flex flex-col gap-1">
+                  <div className="h-px bg-slate-100 my-2"></div>
+
+                  <div className="text-[10px] font-bold text-slate-400 mb-2 px-2 uppercase tracking-wider">Widget Controls</div>
+                  <div className="space-y-1">
                      <button 
                       onClick={() => updateChartConfig(chart.id, { hideToolbar: !chart.hideToolbar })}
-                      className={`flex items-center gap-2 px-2 py-1.5 text-xs rounded-lg transition-colors w-full text-left text-slate-600 hover:bg-slate-50`}
+                      className={`flex items-center gap-2 px-2 py-1.5 text-xs rounded-lg transition-colors w-full text-left ${chart.hideToolbar ? 'text-brand-600 bg-brand-50 font-medium' : 'text-slate-600 hover:bg-slate-50'}`}
                     >
-                      {chart.hideToolbar ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
-                      {chart.hideToolbar ? 'Show Toolbar' : 'Hide Toolbar'}
+                      {chart.hideToolbar ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                      {chart.hideToolbar ? 'Toolbar Hidden' : 'Toolbar Visible'}
                     </button>
                   </div>
                 </div>
               )}
 
               {/* The Widget */}
-              <div className="w-full h-full pt-4"> 
+              <div className="flex-1 w-full h-full relative bg-slate-50"> 
                 <TradingViewWidget 
                   symbol={chart.symbol}
                   interval={chart.interval}
@@ -257,14 +311,15 @@ const App: React.FC = () => {
           ))}
           
           {charts.length === 0 && (
-             <div className="col-span-full h-full flex flex-col items-center justify-center text-slate-400 border-2 border-dashed border-slate-200 rounded-2xl bg-slate-50/50">
-                <Maximize2 className="w-12 h-12 mb-4 opacity-20" />
-                <p>No active charts.</p>
+             <div className="col-span-full min-h-[400px] flex flex-col items-center justify-center text-slate-400 border-2 border-dashed border-slate-300 rounded-2xl bg-white/50">
+                <Maximize2 className="w-16 h-16 mb-4 text-slate-300" />
+                <h3 className="text-lg font-semibold text-slate-600">Your dashboard is empty</h3>
+                <p className="text-sm text-slate-400 max-w-xs text-center mt-2">Add charts to monitor multiple pairs simultaneously with real-time synchronization.</p>
                 <button 
                   onClick={() => setIsAddModalOpen(true)}
-                  className="mt-4 text-brand-500 hover:underline font-medium"
+                  className="mt-6 px-6 py-2 bg-brand-500 hover:bg-brand-600 text-white rounded-full font-medium shadow-lg shadow-brand-500/20 transition-all active:scale-95"
                 >
-                  Add your first chart
+                  Create New Chart
                 </button>
              </div>
           )}
@@ -284,7 +339,7 @@ const App: React.FC = () => {
           <div className="bg-white rounded-2xl shadow-2xl border border-slate-100 p-6 max-w-sm w-full transform transition-all scale-100 animate-in zoom-in-95 duration-200">
             <h3 className="text-lg font-bold text-slate-800 mb-2">Remove Chart?</h3>
             <p className="text-slate-500 mb-6 text-sm leading-relaxed">
-              Are you sure you want to remove this chart? This action cannot be undone.
+              Are you sure you want to remove this chart?
             </p>
             <div className="flex justify-end gap-3">
               <button 
