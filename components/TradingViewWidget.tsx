@@ -47,10 +47,10 @@ const TradingViewWidget: React.FC<TradingViewWidgetProps> = ({
             autosize: autosize,
             symbol: symbol,
             interval: interval,
-            timezone: "Etc/UTC",
+            timezone: "Asia/Ho_Chi_Minh", // Set timezone to Vietnam
             theme: theme,
             style: "1",
-            locale: "en",
+            locale: "vi", // Set locale to Vietnamese
             toolbar_bg: "#f1f3f6",
             enable_publishing: false,
             allow_symbol_change: true, // Allow local change, but global sync will overwrite on next global action
