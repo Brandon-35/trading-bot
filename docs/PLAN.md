@@ -1,7 +1,6 @@
 # Plan — trading-bot
 
-Status: draft (2026-11-26). Scope today: local folder + plan only. Nothing is published,
-nothing is deleted yet.
+Status: Phase 0–1 done (2026-11-26). Repo public at https://github.com/Brandon-35/trading-bot.
 
 ## Goal
 
@@ -26,12 +25,12 @@ dashboards become its monitoring features.
 - [x] Import both apps with history
 - [x] Both apps build (`vite build`)
 
-### Phase 1 — Publish + retire the old repos
-- [ ] Create public `Brandon-35/trading-bot`, push `main`
-- [ ] Disable GitHub Actions on it (`gh api -X PUT repos/Brandon-35/trading-bot/actions/permissions -F enabled=false`)
-- [ ] Back up each old repo: `git clone --mirror` → `git bundle create <name>.bundle --all`
-- [ ] Verify the new repo holds every old commit (`git log --oneline` per subtree path)
-- [ ] Delete `P2P-Crypto-Dashboard` and `CryptoSync-Pro` (`gh repo delete Brandon-35/<name> --yes`)
+### Phase 1 — Publish + retire the old repos (done 2026-11-26)
+- [x] Create public `Brandon-35/trading-bot`, push `main`
+- [x] Disable GitHub Actions on it (`gh api -X PUT repos/Brandon-35/trading-bot/actions/permissions -F enabled=false`)
+- [x] Back up each old repo: `git clone --mirror` → `git bundle create <name>.bundle --all` — evidence: `~/Documents/backups/repo-bundles/*-2026-11-26.bundle`, `git bundle verify` ok
+- [x] Verify the new repo holds every old commit (`git log --oneline` per subtree path)
+- [x] Delete `P2P-Crypto-Dashboard` and `CryptoSync-Pro` (`gh repo delete Brandon-35/<name> --yes`)
 
 ### Phase 2 — Monorepo tooling
 - [ ] pnpm workspace (`apps/*`, `packages/*`), shared TypeScript config
