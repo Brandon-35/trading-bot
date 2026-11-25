@@ -1,0 +1,58 @@
+# Plan — trading-bot
+
+Status: draft (2026-11-26). Scope today: local folder + plan only. Nothing is published,
+nothing is deleted yet.
+
+## Goal
+
+One public, open-source repo for an automated crypto trading bot. The two existing chart
+dashboards become its monitoring features.
+
+## Decisions
+
+- Repo name `trading-bot` under `Brandon-35`, public, MIT license.
+- The two old repos are imported with `git subtree add` so their commit history is kept:
+  - `P2P-Crypto-Dashboard` (main @ 643ed57) → `apps/p2p-dashboard`
+  - `CryptoSync-Pro` (main @ fde6aba) → `apps/chart-sync`
+- Secret scan of the full imported history: no keys found. Both apps read `GEMINI_API_KEY`
+  only from a local, gitignored env file.
+- Safety defaults: paper trading by default, live trading behind an explicit flag,
+  exchange keys only from env, trade-only keys (never withdrawal permission).
+
+## Phases
+
+### Phase 0 — Folder + import (done)
+- [x] `~/Documents/workspace/trading-bot`, git repo, `.gitignore`, MIT `LICENSE`, `README.md`
+- [x] Import both apps with history
+- [x] Both apps build (`vite build`)
+
+### Phase 1 — Publish + retire the old repos
+- [ ] Create public `Brandon-35/trading-bot`, push `main`
+- [ ] Disable GitHub Actions on it (`gh api -X PUT repos/Brandon-35/trading-bot/actions/permissions -F enabled=false`)
+- [ ] Back up each old repo: `git clone --mirror` → `git bundle create <name>.bundle --all`
+- [ ] Verify the new repo holds every old commit (`git log --oneline` per subtree path)
+- [ ] Delete `P2P-Crypto-Dashboard` and `CryptoSync-Pro` (`gh repo delete Brandon-35/<name> --yes`)
+
+### Phase 2 — Monorepo tooling
+- [ ] pnpm workspace (`apps/*`, `packages/*`), shared TypeScript config
+- [ ] Remove AI Studio leftovers (banner, `metadata.json`, import maps) from both apps
+- [ ] One `dev` command that runs both dashboards
+
+### Phase 3 — Bot core (`packages/`)
+- [ ] `exchange`: connector via `ccxt` (Binance first), market data + orders
+- [ ] `strategy`: strategy interface (signal from candles), first strategy = grid or DCA
+- [ ] `risk`: max position size, daily loss limit, kill switch
+- [ ] `backtest`: replay historical candles through a strategy, report PnL / drawdown
+- [ ] `engine`: paper mode default, live mode opt-in
+
+### Phase 4 — Dashboards as bot features
+- [ ] `chart-sync`: show bot entries/exits on the synced charts
+- [ ] `p2p-dashboard`: generalise into a portfolio + bot PnL view fed by the engine
+
+### Phase 5 — Open-source polish
+- [ ] CONTRIBUTING, issue templates, security policy (how to report key leaks)
+- [ ] Docs: quick start with paper trading in under 5 minutes
+
+## Out of scope now
+
+- Updating the `ideal` repo (Portfolio Hub) and the brandon-ta.com site.
