@@ -1,0 +1,5 @@
+{
+  "name": "P2P Crypto Dashboard",
+  "description": "A comprehensive dashboard for visualizing P2P trading data with transaction history, portfolio analysis, and financial charts.",
+  "requestFramePermissions": []
+}
