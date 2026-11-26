@@ -64,7 +64,8 @@ class LLM:
         except (ValidationError, ValueError) as e:
             meta["error"] = f"invalid reply: {e}"[:500]
         except Exception as e:   # network, auth, rate limit: hold this cycle
-            meta["error"] = f"{type(e).__name__}: {e}"[:500]
+            # provider messages can echo part of the key, so keep only the class and HTTP status
+            meta["error"] = f"{type(e).__name__} {getattr(e, 'status_code', '')}".strip()
         meta.setdefault("ms", int((time.time() - t0) * 1000))
         return [], meta
 

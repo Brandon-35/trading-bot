@@ -8,7 +8,7 @@ x-bot: &bot
     MODE: paper
     TZ: Asia/Ho_Chi_Minh
   volumes:
-    - ./data:/data
+    - data:/data
   logging:
     driver: json-file
     options: {max-size: "10m", max-file: "3"}
@@ -60,3 +60,6 @@ services:
       LLM_SCHEMA: json_object
       LLM_PRICE_IN: "2.00"
       LLM_PRICE_OUT: "10.00"
+
+volumes:
+  data:
