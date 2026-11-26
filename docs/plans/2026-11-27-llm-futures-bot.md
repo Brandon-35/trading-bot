@@ -129,9 +129,9 @@ Reading: the result depends almost entirely on the win rate the LLM actually ach
 <!-- Tick an item only with proof: replace the placeholder with `<command → decisive output line | screenshot path | URL>`; a tick without evidence counts as open. -->
 Build acceptance (one build session):
 - [ ] AC1 — signed `fetch_balance` from server-brandon-service with an IP-whitelisted key works; the key shows withdrawals disabled — evidence: <fill when ticked>
-- [ ] AC2 — risk unit tests cover sizing, lot rounding, min-notional skip, SL floor/ceiling, RR, daily stop, total stop — evidence: <fill when ticked>
+- [x] AC2 — risk unit tests cover sizing, lot rounding, min-notional skip, SL floor/ceiling, RR, daily stop, total stop — evidence: `cd bot && uv run pytest -q` → `25 passed` (tests/test_risk.py 9 cases incl. min notional, margin cap, halts; Limits refuse risk > 2 % / leverage > 5)
 - [ ] AC3 — each of the 4 providers returns a pydantic-valid decision from the real API (schema mode recorded per provider) — evidence: <fill when ticked>
-- [ ] AC4 — invalid LLM output (bad JSON, no SL, SL wrong side, RR 1.0) results in no order — evidence: <fill when ticked>
+- [x] AC4 — invalid LLM output (bad JSON, no SL, SL wrong side, RR 1.0) results in no order — evidence: tests/test_bot.py `test_bad_entries_place_no_order` (5 cases, broker.calls == []) + `test_llm_garbage_means_hold` → passed; live smoke on server with a bad key: `llm_call {"error": "AuthenticationError 401"}`, no order
 - [ ] AC5 — on demo, an entry results in an open position plus SL and TP visible in `openAlgoOrders`; when SL fills the TP is gone, and the reverse — evidence: <fill when ticked>
 - [ ] AC6 — forced SL placement failure on demo closes the position at market and sends an alert — evidence: <fill when ticked>
 - [ ] AC7 — after a container kill with an open position, restart reconciles the position and its SL without a duplicate entry — evidence: <fill when ticked>
@@ -683,3 +683,12 @@ Operational milestones (weeks later, tracked on the GitHub issue, not ticked in 
 - D6: x5
 - D8: yes
 - D7: strict
+
+## Build notes — 2026-11-27
+- Built on branch `1-llm-futures-bot`; independent review (ecc:python-reviewer) found no critical defect; 3 high + 9 lower items fixed in 0178ad9 and follow-up (flatten path, reconcile every 20 s, persisted hourly cycle, paper persistence + gap fills, MODE whitelist, limits ceilings, token/signature redaction, per-service keys).
+- Deviation: open-interest change is not in the LLM snapshot (one more API call per symbol for little value); funding is.
+- Deviation: protective orders use quantity + `reduceOnly`, not `closePosition=true` (ccxt path for closePosition unverified); the orphan sibling is cancelled by the 20 s reconcile. Revisit in AC5.
+- Known limit: if a cycle raises, that hour is skipped (no retry, avoids LLM cost loops); SL/TP stay on the exchange and reconcile still runs every 20 s.
+- Known limit: paper funding assumes 8 h for every symbol; SOL may be 4 h.
+- Smoke on server-brandon-service (paper, invalid LLM key): data fetch from Binance FR OK, LLM 401 → hold, events written; image builds; `MODE=Live`/`prod` refused.
+- Local `~/.config/anthropic/api-key.env` key returns 401 (invalid), so AC3 waits for the owner's keys.

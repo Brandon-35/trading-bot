@@ -132,17 +132,18 @@ class Bot:
 
 def main():
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(message)s")
-    logging.getLogger("httpx").setLevel(logging.WARNING)   # its request log line contains the Telegram token
-    store = Store(os.getenv("DB_PATH", "data/bot.db"))
-    if "--clear-halt" in sys.argv:
-        store.log("halt_clear")
-        print("halt cleared")
-        return
+    for name in ("httpx", "httpx2"):   # request log lines contain URLs; the Telegram one carries the token
+        logging.getLogger(name).setLevel(logging.WARNING)
     mode = os.getenv("MODE", "paper")
     if mode not in ("paper", "demo", "live"):
         sys.exit(f"MODE must be paper, demo or live, got {mode!r}")
     if mode == "live" and os.getenv("LIVE_CONFIRM") != "I-ACCEPT-REAL-MONEY":
         sys.exit("MODE=live needs LIVE_CONFIRM=I-ACCEPT-REAL-MONEY")
+    store = Store(os.getenv("DB_PATH", "data/bot.db"))
+    if "--clear-halt" in sys.argv:
+        store.log("halt_clear")
+        print("halt cleared")
+        return
     limits = Limits(leverage=int(os.getenv("LEVERAGE", "5")), risk_pct=float(os.getenv("RISK_PCT", "0.02")))
     ex = make_ccxt(mode)
     on_close = lambda **t: (store.log("trade_close", **t),
