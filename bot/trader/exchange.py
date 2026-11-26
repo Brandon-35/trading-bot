@@ -4,10 +4,13 @@ Interface: equity(), free_margin(), positions() -> {symbol: {side, qty, entry}},
 protective_count(symbol), open(symbol, side, qty, sl, tp), close(symbol), cancel_protective(symbol),
 tick() (paper only: fills stops), market(symbol) -> ccxt market dict, data = ccxt instance for prices.
 """
+import logging
 import os
 import time
 
 import ccxt
+
+log = logging.getLogger("exchange")
 
 
 def make_ccxt(mode: str) -> ccxt.binanceusdm:
@@ -24,18 +27,13 @@ class Binance:
     def __init__(self, ex: ccxt.binanceusdm, symbols: list[str], leverage: int):
         self.data = self.ex = ex
         ex.load_markets()
-        try:
-            ex.set_position_mode(False)                      # one-way
-        except ccxt.ExchangeError as e:
-            if "-4059" not in str(e):                        # -4059: already one-way
-                raise
-        for s in symbols:
+        # setup must never block startup (e.g. a position is already open): reconcile has to run
+        for call, args in [(ex.set_position_mode, (False,))] + \
+                [(f, a) for s in symbols for f, a in ((ex.set_margin_mode, ("isolated", s)), (ex.set_leverage, (leverage, s)))]:
             try:
-                ex.set_margin_mode("isolated", s)
+                call(*args)
             except ccxt.ExchangeError as e:
-                if "-4046" not in str(e):                    # -4046: already isolated
-                    raise
-            ex.set_leverage(leverage, s)
+                log.warning("setup %s%s: %s", call.__name__, args, str(e)[:200])
 
     def market(self, symbol):
         return self.ex.market(symbol)

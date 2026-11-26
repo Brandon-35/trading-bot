@@ -139,6 +139,8 @@ def main():
         sys.exit(f"MODE must be paper, demo or live, got {mode!r}")
     if mode == "live" and os.getenv("LIVE_CONFIRM") != "I-ACCEPT-REAL-MONEY":
         sys.exit("MODE=live needs LIVE_CONFIRM=I-ACCEPT-REAL-MONEY")
+    if not os.getenv("LLM_API_KEY") and "--clear-halt" not in sys.argv:
+        sys.exit("LLM_API_KEY is empty")
     store = Store(os.getenv("DB_PATH", "data/bot.db"))
     if "--clear-halt" in sys.argv:
         store.log("halt_clear")

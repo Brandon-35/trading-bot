@@ -32,6 +32,8 @@ def _schema() -> dict:
     d["additionalProperties"] = False
     for p in d["properties"].values():
         p.pop("default", None)
+        p.pop("minimum", None)   # some strict-schema providers reject numeric bounds; pydantic still checks them
+        p.pop("maximum", None)
     s["additionalProperties"] = False
     return {"type": "json_schema", "json_schema": {"name": "reply", "strict": True, "schema": s}}
 
@@ -44,6 +46,7 @@ class LLM:
         self.schema_mode = os.getenv("LLM_SCHEMA", "json_schema")   # json_schema | json_object
         self.price_in = float(os.getenv("LLM_PRICE_IN", "0"))       # USD per 1M tokens
         self.price_out = float(os.getenv("LLM_PRICE_OUT", "0"))
+        self.debug = False   # --dry prints the full provider error to stdout (never to the store or Telegram)
 
     def decide(self, snapshot: dict) -> tuple[list[Decision], dict]:
         """Return (decisions, call metadata). Decisions are [] on any error."""
@@ -66,6 +69,8 @@ class LLM:
         except Exception as e:   # network, auth, rate limit: hold this cycle
             # provider messages can echo part of the key, so keep only the class and HTTP status
             meta["error"] = f"{type(e).__name__} {getattr(e, 'status_code', '')}".strip()
+            if self.debug:
+                print(f"provider error detail: {e}")
         meta.setdefault("ms", int((time.time() - t0) * 1000))
         return [], meta
 
@@ -81,5 +86,7 @@ if __name__ == "__main__":   # python -m trader.llm --dry : one real call on a t
     demo = {"time_utc": "dry-run", "equity": 100, "open_positions": [], "symbols": {
         "BTC/USDT:USDT": {"price": 60000, "atr_1h": 600, "rsi_1h": 55, "ema20_1h": 59800, "ema50_1h": 59000,
                           "funding": 0.0001, "candles_1h": [[59500, 60100, 59400, 60000, 1200]]}}}
-    ds, m = LLM().decide(demo)
+    llm = LLM()
+    llm.debug = True
+    ds, m = llm.decide(demo)
     print(json.dumps({"decisions": [d.model_dump() for d in ds], **{k: v for k, v in m.items() if k != "raw"}}, indent=1))
