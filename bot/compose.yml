@@ -3,10 +3,12 @@ x-bot: &bot
   build: .
   image: trading-bot:latest
   restart: unless-stopped
-  env_file: .env
+  # no env_file: each service gets only its own LLM key (interpolated from .env by compose)
   environment: &env
     MODE: paper
     TZ: Asia/Ho_Chi_Minh
+    TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+    TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID:-}
   volumes:
     - data:/data
   logging:

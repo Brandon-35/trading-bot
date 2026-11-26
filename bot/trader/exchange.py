@@ -65,27 +65,43 @@ class Binance:
             self.ex.cancel_all_orders(symbol, params={"trigger": True})
 
     def open(self, symbol, side, qty, sl, tp):
-        """Market entry, then SL and TP. If either protective order fails, flatten and re-raise."""
+        """Market entry, then SL and TP. Any failure (even an ambiguous entry timeout) flattens and re-raises."""
         buy = side == "long"
         self.cancel_protective(symbol)                       # no orphan reduce-only order may hit the new position
-        order = self.ex.create_order(symbol, "market", "buy" if buy else "sell", qty)
         exit_side = "sell" if buy else "buy"
         try:
+            order = self.ex.create_order(symbol, "market", "buy" if buy else "sell", qty)
+            # shortcut: quantity + reduceOnly, not closePosition; the sibling of a filled stop is cancelled by
+            # reconcile within ~20 s. Switch to closePosition once it is verified on the algo endpoint.
             for key, px in (("stopLossPrice", sl), ("takeProfitPrice", tp)):
                 self.ex.create_order(symbol, "market", exit_side, qty, None,
                                      {key: self.ex.price_to_precision(symbol, px), "reduceOnly": True,
                                       "workingType": "MARK_PRICE"})
         except Exception:
-            self.close(symbol)
+            self._flatten(symbol, exit_side, qty)
             raise
         return order
 
+    def _flatten(self, symbol, exit_side, qty):
+        """Reduce-only market exit with the known qty; Binance rejects it if already flat, so retrying is safe."""
+        for attempt in range(3):
+            try:
+                self.ex.create_order(symbol, "market", exit_side, qty, None, {"reduceOnly": True})
+                break
+            except Exception:
+                if attempt == 2 or not self.positions().get(symbol):
+                    break
+                time.sleep(1)
+        if not self.positions().get(symbol):
+            self.cancel_protective(symbol)
+
     def close(self, symbol):
-        self.cancel_protective(symbol)
+        """Exit first, cancel protection second, so a failed exit never leaves a naked position."""
         p = self.positions().get(symbol)
         if p:
             self.ex.create_order(symbol, "market", "sell" if p["side"] == "long" else "buy", p["qty"], None,
                                  {"reduceOnly": True})
+        self.cancel_protective(symbol)
 
     def tick(self):
         pass
@@ -95,13 +111,20 @@ class Paper:
     """Fills at the live last price with slippage and taker fee; stops checked on 1m candles (stop wins a tie)."""
     FEE, SLIP = 0.0005, 0.0002
 
-    def __init__(self, ex: ccxt.binanceusdm, leverage: int, start: float = 100.0, on_close=None):
+    def __init__(self, ex: ccxt.binanceusdm, leverage: int, start: float = 100.0, on_close=None,
+                 state: dict | None = None, save=None):
+        """`state` is the last saved {cash, pos, last_funding_hour}; `save(state)` persists it."""
         self.data = ex
         ex.load_markets()
-        self.leverage, self.cash, self.pos = leverage, start, {}
-        self.last_check = int(time.time() * 1000)
-        self.last_funding_hour = None
+        s = state or {}
+        self.leverage = leverage
+        self.cash, self.pos = s.get("cash", start), s.get("pos", {})
+        self.last_funding_hour = tuple(s["last_funding_hour"]) if s.get("last_funding_hour") else None
         self.on_close = on_close or (lambda **k: None)
+        self.save = save or (lambda st: None)
+
+    def _save(self):
+        self.save({"cash": self.cash, "pos": self.pos, "last_funding_hour": self.last_funding_hour})
 
     def market(self, symbol):
         return self.data.market(symbol)
@@ -133,6 +156,7 @@ class Paper:
         self.cash -= px * qty * self.FEE
         self.pos[symbol] = {"side": side, "qty": qty, "entry": px, "sl": sl, "tp": tp,
                             "fees": px * qty * self.FEE, "funding": 0.0, "opened": int(time.time() * 1000)}
+        self._save()
 
     def _exit(self, symbol, px, why):
         p = self.pos.pop(symbol)
@@ -140,6 +164,7 @@ class Paper:
         fee = px * p["qty"] * self.FEE
         pnl = self._upnl(p, px)
         self.cash += pnl - fee
+        self._save()
         self.on_close(symbol=symbol, side=p["side"], qty=p["qty"], entry=p["entry"], exit=px, why=why,
                       pnl=pnl - fee - p["fees"] + p["funding"], fees=fee + p["fees"], funding=p["funding"])
 
@@ -153,12 +178,17 @@ class Paper:
         for s in list(self.pos):
             p = self.pos[s]
             first = p["opened"] // 60_000 * 60_000 + 60_000      # first full minute after the entry
-            for c in self.data.fetch_ohlcv(s, "1m", since=max(self.last_check - 60_000, first), limit=100):
-                lo, hi = c[3], c[2]
-                hit_sl = lo <= p["sl"] if p["side"] == "long" else hi >= p["sl"]
-                hit_tp = hi >= p["tp"] if p["side"] == "long" else lo <= p["tp"]
-                if hit_sl or hit_tp:
-                    self._exit(s, p["sl"] if hit_sl else p["tp"], "stop_loss" if hit_sl else "take_profit")
+            # re-scan the last 1000 minutes every tick: idempotent, survives restarts; an outage > 16 h may miss stops
+            for c in self.data.fetch_ohlcv(s, "1m", since=max(now - 999 * 60_000, first), limit=1000):
+                op, hi, lo = c[1], c[2], c[3]
+                long = p["side"] == "long"
+                hit_sl = lo <= p["sl"] if long else hi >= p["sl"]
+                hit_tp = hi >= p["tp"] if long else lo <= p["tp"]
+                if hit_sl:   # a stop-market fills at the open when the candle gaps through it
+                    self._exit(s, min(op, p["sl"]) if long else max(op, p["sl"]), "stop_loss")
+                    break
+                if hit_tp:
+                    self._exit(s, p["tp"], "take_profit")
                     break
         hour = time.gmtime(now / 1000)
         key = (hour.tm_yday, hour.tm_hour)
@@ -170,4 +200,4 @@ class Paper:
                 pay = p["entry"] * p["qty"] * rate * (1 if p["side"] == "long" else -1)
                 p["funding"] -= pay
                 self.cash -= pay
-        self.last_check = now
+            self._save()
