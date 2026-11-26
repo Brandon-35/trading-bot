@@ -146,9 +146,9 @@ Operational milestones (weeks later, tracked on the GitHub issue, not ticked in 
 - M4 — live: 72 h with no restart loop and a daily Telegram summary; first live trade has its SL on the exchange.
 
 ## Needs
-- NEEDS: BINANCE_DEMO_KEY — demo.binance.com API key + secret (Phase 3)
+- NEEDS: BINANCE_DEMO_KEY — demo.binance.com API key + secret (Phase 3; used by `python -m trader.demo_check` for AC5–AC7)
 - NEEDS: BINANCE_LIVE_KEY — live key: Futures on, withdrawals off, IP whitelist 5.189.155.78; read-only at first for Phase 0a, Futures trading switched on only at Phase 4
-- NEEDS: LLM_KEYS — pay-as-you-go keys for z.ai (GLM), platform.moonshot.ai (Kimi), OpenAI, Anthropic (Phase 1)
+- NEEDS: LLM_KEYS — pay-as-you-go keys for z.ai (GLM), platform.moonshot.ai (Kimi), OpenAI, Anthropic (Phase 1; AC3 via `python -m trader.llm --dry`; local ~/.config/anthropic key returns 401)
 - NEEDS: TELEGRAM — bot token from @BotFather + chat id (Phase 2)
 - NEEDS: FUNDING — 100 USDT moved into the USDⓈ-M futures wallet (Phase 4)
 
