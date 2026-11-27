@@ -115,9 +115,9 @@ def test_day_start_uses_equity_from_before_midnight(tmp_path):
 
 def test_limits_refuse_values_above_plan():
     with pytest.raises(ValueError):
-        Limits(risk_pct=0.05)
+        Limits(risk_pct=0.11)
     with pytest.raises(ValueError):
-        Limits(leverage=10)
+        Limits(leverage=11)
 
 
 def test_kind_reads_algo_order_type():

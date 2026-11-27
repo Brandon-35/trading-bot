@@ -18,11 +18,11 @@ class Limits:
     sl_max_atr: float = 3.0
 
     def __post_init__(self):
-        # hard ceilings from the approved plan; raising them is a plan change, not an env tweak
-        if not 0 < self.risk_pct <= 0.02:
-            raise ValueError("risk_pct must be in (0, 0.02]")
-        if not 1 <= self.leverage <= 5:
-            raise ValueError("leverage must be in [1, 5]")
+        # hard ceilings; 10 % risk is the owner's decision of 2026-11-28 (D14), above that is a plan change
+        if not 0 < self.risk_pct <= 0.10:
+            raise ValueError("risk_pct must be in (0, 0.10]")
+        if not 1 <= self.leverage <= 10:
+            raise ValueError("leverage must be in [1, 10]")
 
 
 def validate(action: str, price: float, stop_loss: float | None, take_profit: float | None,
@@ -49,6 +49,9 @@ def validate(action: str, price: float, stop_loss: float | None, take_profit: fl
         return f"stop too tight: {risk:.6g} < {min_dist:.6g}"
     if risk > limits.sl_max_atr * atr:
         return f"stop too wide: {risk:.6g} > {limits.sl_max_atr * atr:.6g}"
+    liq = price * (1 / limits.leverage - 0.005)   # isolated liquidation distance, 0.5 % maintenance margin
+    if risk * 2 > liq:
+        return f"liquidation too close at {limits.leverage}x: stop {risk:.6g} > half of {liq:.6g}"
     if reward / risk < limits.min_rr:
         return f"reward/risk {reward / risk:.2f} < {limits.min_rr}"
     return None

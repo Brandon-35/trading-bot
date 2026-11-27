@@ -59,3 +59,10 @@ def test_halts():
     assert halt_reason(94.0, 100, L) == "daily"
     assert halt_reason(94.1, 100, L) is None
     assert halt_reason(100, 0, L) is None
+
+
+def test_stop_must_sit_well_inside_liquidation():
+    from trader.risk import Limits, validate
+    # 10x isolated: liquidation ~9.5 % away, so a 5 % stop is refused and a 4 % stop passes
+    assert "liquidation" in validate("long", 100, 95, 115, 0.8, 2, Limits(leverage=10, sl_max_atr=10))
+    assert validate("long", 100, 96, 110, 0.8, 2, Limits(leverage=10, sl_max_atr=10)) is None

@@ -21,10 +21,14 @@ verified_commit: af4e993
 | DISCORD_WEBHOOK_URL | báo động Discord, kênh #trading-bot (BrandonTa Lab) | bot | yes |
 | DASH_USER | user dashboard | dashboard | no |
 | DASH_PASSWORD | mật khẩu dashboard | dashboard | yes |
-| LEVERAGE | đòn bẩy, tối đa 5 | bot | no |
-| RISK_PCT | rủi ro mỗi lệnh, tối đa 0.02 | bot | no |
+| LEVERAGE | đòn bẩy, tối đa 10 | bot | no |
+| RISK_PCT | rủi ro mỗi lệnh, tối đa 0.10 | bot | no |
+| DAILY_STOP_PCT | lỗ trong ngày (UTC) tới mức này thì dừng vào lệnh, mặc định 0.06 | bot | no |
+| LIVE_RISK_PCT | RISK_PCT riêng của bot tiền thật (.env), mặc định 0.02 | bot (live) | no |
+| LIVE_LEVERAGE | LEVERAGE riêng của bot tiền thật, mặc định 5 | bot (live) | no |
+| LIVE_DAILY_STOP_PCT | DAILY_STOP_PCT riêng của bot tiền thật, mặc định 0.06 | bot (live) | no |
 | FLOOR_EQUITY | dừng hẳn khi equity dưới mức này (USDT), mặc định 70 | bot (live) | no |
-| SYMBOLS | danh sách cặp | bot, dashboard | no |
+| SYMBOLS | danh sách cặp (live + dashboard đọc từ .env; paper giữ mặc định 3 cặp) | bot (live), dashboard | no |
 | DB_PATH | file SQLite | bot | no |
 | PAPER_START | vốn paper | bot | no |
 | BOT_NAME | nhãn trong báo động | bot | no |
