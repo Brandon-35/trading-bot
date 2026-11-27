@@ -18,6 +18,7 @@ function f2(v, d) { return num(v) ? v.toFixed(d == null ? 2 : d) : '-'; }
 function sg(v, d) { return num(v) ? (v > 0 ? '+' : '') + v.toFixed(d == null ? 2 : d) : '-'; }
 function cls(v) { return !num(v) || v === 0 ? '' : v > 0 ? 'up' : 'dn'; }
 function pn(v, d, suffix) { return el('span', cls(v), sg(v, d) + (suffix || '')); }
+function vd(t) { return num(t) ? new Date((t + TZ) * 1000).toISOString().slice(0, 10).split('-').reverse().join('/') : '-'; }
 function vt(t) { // "11-27 14:00"
   if (!num(t)) return '-';
   return new Date((t + TZ) * 1000).toISOString().slice(5, 16).replace('T', ' ');
@@ -316,14 +317,15 @@ function renderAccount() {
   const root = $('#tab-account'), a = acct; clear(root);
   root.appendChild(el('div', 'banner', 'Toàn bộ tài khoản — gồm cả lệnh bạn tự đánh, không dùng làm vốn của bot.'));
   const cv = a.coverage || {};
-  root.appendChild(el('div', 'foot', 'Dữ liệu từ ' + vt(cv.from) + ' đến ' + vt(cv.to) + ' · nguồn: ' + ((cv.sources || []).join(', ') || '-')));
+  root.appendChild(el('div', 'foot', 'Dữ liệu từ ' + vd(cv.from) + ' đến ' + vd(cv.to) + ' · nguồn: ' + ((cv.sources || []).join(', ').replace('csv', 'file xuất Binance') || '-')));
   const t = a.totals || {}, g = el('div', 'grid');
   g.appendChild(card('Tiền nạp / chuyển vào', f2(t.transfer_in) + ' USDT', null, 'Tiền bạn đưa vào tài khoản futures.'));
   g.appendChild(card('Tiền rút / chuyển ra', f2(t.transfer_out) + ' USDT', null, 'Tiền bạn lấy ra khỏi futures.'));
   g.appendChild(card('Lãi/lỗ đã chốt', pn(t.realized, 2), null, 'Lãi/lỗ của các lệnh đã đóng.'));
   g.appendChild(card('Phí', pn(t.fees, 2), null, 'Phí giao dịch đã trả.'));
   g.appendChild(card('Funding', pn(t.funding, 2), null, 'Phí giữ vị thế qua đêm.'));
-  g.appendChild(card('Kết quả giao dịch ròng', pn(t.net, 2, ' USDT'), null, 'Đã chốt trừ phí và funding.'));
+  g.appendChild(card('Bị thanh lý', pn(t.liquidation, 2), null, 'Phí thanh lý (quỹ bảo hiểm) khi lệnh bị cháy.'));
+  g.appendChild(card('Kết quả giao dịch ròng', pn(t.net, 2, ' USDT'), 'Khác (đổi coin…): ' + sg(t.other, 2), 'Đã chốt + phí + funding + thanh lý + khác.'));
   root.appendChild(g);
   const mp = panel('Kết quả theo tháng', 'Cột = kết quả ròng từng tháng, đường vàng = cộng dồn.');
   const mb = el('div', 'chart sm'); mp.appendChild(mb); root.appendChild(mp);
