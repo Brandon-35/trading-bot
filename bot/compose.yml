@@ -87,6 +87,16 @@ services:
       OPENROUTER_MODEL: ${OPENROUTER_MODEL:-anthropic/claude-haiku-5.5}
       OPENROUTER_PRICE_IN: ${OPENROUTER_PRICE_IN:-0.10}
       OPENROUTER_PRICE_OUT: ${OPENROUTER_PRICE_OUT:-0.50}
+  dashboard:   # read-only status page; server-local port only, reach it with an SSH tunnel
+    image: trading-bot:latest
+    build: .
+    restart: unless-stopped
+    command: ["python", "-m", "trader.dashboard"]
+    environment:
+      TZ: Asia/Ho_Chi_Minh
+    ports: ["127.0.0.1:8090:8080"]
+    volumes:
+      - data:/data
 
 volumes:
   data:
