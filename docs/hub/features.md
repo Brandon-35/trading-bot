@@ -1,7 +1,7 @@
 ---
 section: features
 updated: 2026-11-28
-verified_commit: af4e993
+verified_commit: 360d65d
 ---
 
 | Surface | Feature | Status | Since |
@@ -12,7 +12,7 @@ verified_commit: af4e993
 | bot | Lệnh market + SL/TP trên sàn, lỗi đặt SL thì đóng ngay, đối chiếu sàn mỗi 20 s | shipped | 2026-11-27 |
 | bot | Tự chọn LLM theo key có sẵn (OpenAI, Anthropic, z.ai, Moonshot, OpenRouter) | shipped | 2026-11-27 |
 | bot | Paper broker + arena nhiều model | shipped | 2026-11-27 |
-| alerts | Báo động Discord webhook: thẻ màu tiếng Việt (mở/đóng lệnh, lãi/lỗ, rủi ro, lý do AI), ghi rõ bot nào | shipped | 2026-11-28 |
+| alerts | Báo động Discord webhook: thẻ màu tiếng Việt, số tiền lãi/lỗ (USDT + ≈ VND) ngay tiêu đề; bot tiền thật báo cả lệnh sàn tự đóng (SL/TP); tóm tắt 24 giờ | shipped | 2026-11-28 |
 | dashboard | Trang vốn, vị thế, lệnh, quyết định LLM, chi phí (trang đăng nhập, phiên 7 ngày, nút đăng xuất) | shipped | 2026-11-27 |
 | dashboard | Giao diện v2 tiếng Việt màu Binance: biểu đồ nến + điểm vào/ra của bot, đường giá trị vốn (vốn đầu + credit LLM), lời/lỗ theo ngày, vị thế realtime, lịch sử lệnh, quyết định LLM | shipped | 2026-11-27 |
 | dashboard | Tab Tài khoản: lời/lỗ toàn bộ vòng đời Futures (file xuất Binance từ 2019 + API), theo tháng, theo cặp | shipped | 2026-11-27 |

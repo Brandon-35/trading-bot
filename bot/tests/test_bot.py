@@ -128,3 +128,21 @@ def test_llm_garbage_means_hold(monkeypatch):
     monkeypatch.setattr(llm.client.chat.completions, "create", lambda **k: R())
     ds, meta = llm.decide({})
     assert ds == [] and "invalid reply" in meta["error"]
+
+
+def test_live_close_is_announced_once_with_net_pnl(tmp_path, monkeypatch):
+    from trader import notify, sync
+    sent = []
+    monkeypatch.setattr(notify, "closed", lambda *a: sent.append(a))
+    trades = []
+    monkeypatch.setattr(sync, "replay", lambda db, start: (trades, {}))
+    b = bot(FakeBroker(), tmp_path, mode="live")
+    trades.append({"symbol": S, "open_time": 1_000_000, "close_time": 2_000_000, "net": -0.5, "reason": "stop_loss"})
+    b.check_closed()                       # first run: watermark only, the old trade is not re-announced
+    assert sent == []
+    b.store.log("trade_open", symbol=S, qty=0.001, price=60_000.0, sl=59_500.0)
+    t_open = b.store.all("trade_open")[-1]["ts"]
+    trades.append({"symbol": S, "open_time": t_open * 1000, "close_time": 3_000_000, "net": 0.75, "reason": "take_profit"})
+    b.check_closed()
+    b.check_closed()                       # same trade never twice
+    assert sent == [(S, 0.75, "take_profit", 1.5)]
