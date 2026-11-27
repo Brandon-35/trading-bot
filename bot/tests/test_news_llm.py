@@ -51,11 +51,19 @@ def test_trade_cards_read_in_vietnamese(monkeypatch):
     sent = []
     monkeypatch.setattr(notify.httpx, "post", lambda url, **k: sent.append(k["json"]["embeds"][0]))
     monkeypatch.setenv("DISCORD_WEBHOOK_URL", "https://discord.com/api/webhooks/1/abc")
+    monkeypatch.setitem(notify._fx, "t", 9e18)
     notify.opened("SOL/USDT:USDT", "long", 0.52, 72.94, 72.222, 74.377, 5, 0.373, 0.02, "xu hướng tăng")
     notify.closed("BNB/USDT:USDT", -0.3731, "stop_loss", -1.0)
     o, c = sent
     assert o["title"] == "🟢 MỞ LONG · SOL" and o["color"] == notify.GREEN
-    assert "**Giá vào:** 72,9400" in o["description"] and "**Cắt lỗ:** 72,2220 (−1,0%)" in o["description"]
-    assert "**Khối lượng:** 0,52 SOL ≈ 37,93 USDT · 5x" in o["description"] and o["description"].endswith("> xu hướng tăng")
-    assert c["title"] == "❌ ĐÓNG LỖ · BNB" and "−0,373 USDT (−1,00R)" in c["description"] and "chạm cắt lỗ" in c["description"]
+    monkeypatch.setitem(notify._fx, "rate", 26_000.0)
+    monkeypatch.setitem(notify._fx, "t", 9e18)
+    sent.clear()
+    notify.opened("SOL/USDT:USDT", "long", 0.52, 72.94, 72.222, 74.377, 5, 0.373, 0.02, "xu hướng tăng")
+    notify.closed("BNB/USDT:USDT", -0.3731, "stop_loss", -1.0)
+    o, c = sent
+    assert o["description"].startswith("**Nếu chạm cắt lỗ:** lỗ −0,373 USDT (≈ −9.700 ₫)")
+    assert "**Nếu chạm chốt lời:** lãi +0,747 USDT (≈ +19.400 ₫)" in o["description"]
+    assert "Khối lượng 0,52 SOL ≈ 37,93 USDT · 5x" in o["description"] and o["description"].endswith("> xu hướng tăng")
+    assert c["title"] == "❌ LỖ −0,373 USDT (≈ −9.700 ₫) · BNB" and "chạm cắt lỗ" in c["description"]
     assert notify.num(1234567.891) == "1.234.567,89"

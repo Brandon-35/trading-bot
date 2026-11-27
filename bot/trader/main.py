@@ -4,6 +4,7 @@ MODE=paper (default) | demo | live. Live also needs LIVE_CONFIRM=I-ACCEPT-REAL-M
 `python -m trader.main --clear-halt` lifts a full stop after the owner has looked at it.
 `python -m trader.main --once` runs one decision cycle and exits (smoke test).
 """
+import json
 import logging
 import math
 import os
@@ -161,10 +162,31 @@ class Bot:
         e = self.store.last("equity") or {}
         cost = self.store.db.execute(
             "SELECT COALESCE(SUM(json_extract(data,'$.cost')),0) FROM events WHERE kind='llm_call'").fetchone()[0]
-        open_ = [notify.coin(x) for x in (e.get('positions') or {})]
-        notify.card("📊 Tóm tắt ngày", [f"**Vốn:** {notify.num(e.get('equity', 0))} USDT",
-                                       f"**Đang mở:** {', '.join(open_) or 'không có'}",
-                                       f"**Chi phí AI từ đầu:** ${cost:.3f}"], notify.BLUE)
+        ago = self.store.db.execute("SELECT data FROM events WHERE kind='equity' AND ts <= ? ORDER BY ts DESC LIMIT 1",
+                                    (int(time.time()) - 86400,)).fetchone()
+        eq = e.get("equity", 0)
+        notify.daily(eq - (json.loads(ago[0])["equity"] if ago else eq), eq,
+                     [notify.coin(x) for x in (e.get("positions") or {})], cost)
+
+    def check_closed(self):
+        """Live: one card per bot trade the exchange closed (SL/TP fill or a close order), with its net PnL from
+        the synced fills. The first run only sets the watermark, so old trades are never re-announced."""
+        trades, _ = sync.replay(self.store.db, sync.bot_start_ms())
+        seen = self.store.last("close_notified")
+        top = max((t["close_time"] for t in trades), default=0)
+        if seen is None:
+            self.store.log("close_notified", t=top)
+            return
+        opens = self.store.all("trade_open")
+        for t in trades:
+            if t["close_time"] <= seen["t"]:
+                continue
+            o = min((x for x in opens if x.get("symbol") == t["symbol"] and x.get("sl")),
+                    key=lambda x: abs(x["ts"] - t["open_time"] / 1000), default=None)
+            risk = o["qty"] * abs(o["price"] - o["sl"]) if o else 0
+            notify.closed(t["symbol"], t["net"], t["reason"], t["net"] / risk if risk else None)
+        if top > seen["t"]:
+            self.store.log("close_notified", t=top)
 
 
 class BotV2(Bot):
@@ -436,7 +458,7 @@ class BotV2(Bot):
                        risk=fill["qty"] * dist, confidence=conf)
         self._decision(s, side, sl, tp, conf, why, None)
         notify.opened(s, side, fill["qty"], fill["entry"], sl, tp, lev, fill["qty"] * dist, rp,
-                      "" if why == "signal" else why, tp_label="Chốt ½ ở")
+                      "" if why == "signal" else why, tp_label="Chốt ½ ở", tp_qty=fill["tp_qty"])
 
     def _decision(self, s, side, sl, tp, conf, why, reject):
         self.store.log("decision", symbol=s, action=side if reject is None else "hold", stop_loss=sl, take_profit=tp,
@@ -535,6 +557,7 @@ def main():
             bot.reconcile(broker.positions())        # live/demo: protection checked every 20 s, also right after start
             if mode != "paper":
                 sync.run(ex, store.db, SYMBOLS, sync_last)
+                bot.check_closed()
             now = time.time()
             hour_key = time.strftime("%Y-%m-%dT%H", time.gmtime(now))
             done = store.last("cycle")
