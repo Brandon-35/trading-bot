@@ -51,8 +51,8 @@ def main():
 
     # AC5b: stop fills -> sibling TP is gone after reconcile
     px = float(ex.fetch_ticker(S)["last"])
-    b.open(S, "long", qty, px * 0.9985, px * 1.05)          # 0.15 % stop, should trigger within minutes
-    for _ in range(60):                                      # up to 10 min
+    b.open(S, "long", qty, px * 0.9995, px * 1.05)          # 0.05 % stop, should trigger within minutes
+    for _ in range(90):                                      # up to 15 min
         time.sleep(10)
         if S not in b.positions():
             break
