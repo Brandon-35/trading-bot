@@ -23,7 +23,7 @@ Guidance:
 - Prefer trading with the 4h trend; be careful when funding is extreme.
 - Use news as context: a fresh major event (hack, ETF/regulatory decision, exchange failure, macro shock) can
   justify holding or closing; do not trade a headline alone without price confirmation.
-- Keep "reason" to one or two short sentences.
+- Keep "reason" to one or two short sentences, written in Vietnamese.
 
 Reply with JSON only, no prose, in this exact shape:
 {"decisions":[{"symbol":"BTC/USDT:USDT","action":"hold","stop_loss":null,"take_profit":null,"confidence":0.0,"reason":"..."}]}

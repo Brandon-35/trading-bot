@@ -1,7 +1,7 @@
 ---
 section: env
-updated: 2026-11-27
-verified_commit: 356f931
+updated: 2026-11-28
+verified_commit: af4e993
 ---
 
 | Name | Purpose | Used by | Secret |
@@ -38,7 +38,7 @@ verified_commit: 356f931
 | UNIVERSE_N | số altcoin quét (mặc định 30 cho paper) | bot | no |
 | RISK_PCT_PROVEN | rủi ro/lệnh sau khi qua cổng lợi thế (≥ 30 lệnh, ≥ +0,10R), mặc định 0.03 | bot | no |
 | FLOOR_EQUITY_PAPER | sàn dừng của nhánh paper v2 | bot | no |
-| LEAD_MODEL | AI lead của hội đồng (mặc định deepseek/deepseek-v3.2) | bot | no |
-| ANALYST_MODEL | AI phân tích + bull/bear (mặc định qwen/qwen3-235b-a22b-2507) | bot | no |
+| LEAD_MODEL | AI lead của hội đồng (mặc định deepseek/deepseek-v4.1-flash-1017) | bot | no |
+| ANALYST_MODEL | AI phân tích + bull/bear (mặc định deepseek/deepseek-v4.1-flash-1017) | bot | no |
 | LLM_DAILY_USD | trần chi phí AI mỗi ngày UTC (mặc định 0.10) | bot | no |
 | ARM_DBS | DB của 2 nhánh paper cho dashboard | dashboard | no |

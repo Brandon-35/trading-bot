@@ -9,8 +9,8 @@ from pydantic import BaseModel, Field
 
 from . import llm
 
-LEAD_MODEL = os.getenv("LEAD_MODEL", "deepseek/deepseek-v3.2")
-ANALYST_MODEL = os.getenv("ANALYST_MODEL", "qwen/qwen3-235b-a22b-2507")
+LEAD_MODEL = os.getenv("LEAD_MODEL", "deepseek/deepseek-v4.1-flash-1017")
+ANALYST_MODEL = os.getenv("ANALYST_MODEL", "deepseek/deepseek-v4.1-flash-1017")
 MIN_CONFIDENCE = 0.6
 
 _JSON = "Reply with one JSON object only, no prose."
@@ -36,11 +36,11 @@ LEAD_PROMPT = (
     "Judge the arguments on substance, independent of speaking order. Never chase a move that already ran. "
     "Weigh the recent closed trades only as context, not as a reason to flip. "
     'Answer {"action": "open"|"skip", "side": "long"|"short", "confidence": 0..1, "sl_atr": stop distance in ATR '
-    '(1.0-3.0), "tp_r": take-profit in R multiples (1.5-4.0), "rationale": str (max 60 words)}. ' + _JSON)
+    '(1.0-3.0), "tp_r": take-profit in R multiples (1.5-4.0), "rationale": str (max 60 words, written in Vietnamese)}. ' + _JSON)
 MANAGE_PROMPT = (
     "You review one open crypto futures position every hour. You may only hold, tighten the stop (move it closer to "
     "the price, never wider) or close early. Default is hold; close only if the thesis is clearly broken. "
-    'Answer {"action": "hold"|"tighten"|"close", "new_stop": number|null, "rationale": str (max 40 words)}. ' + _JSON)
+    'Answer {"action": "hold"|"tighten"|"close", "new_stop": number|null, "rationale": str (max 40 words, written in Vietnamese)}. ' + _JSON)
 
 
 class Analyst(BaseModel):
