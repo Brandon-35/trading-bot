@@ -13,5 +13,5 @@ verified_commit: 1728129
 | bot | Tự chọn LLM theo key có sẵn (OpenAI, Anthropic, z.ai, Moonshot, OpenRouter) | shipped | 2026-11-27 |
 | bot | Paper broker + arena nhiều model | shipped | 2026-11-27 |
 | alerts | Báo động Discord webhook | shipped | 2026-11-27 |
-| dashboard | Trang vốn, vị thế, lệnh, quyết định LLM, chi phí (Basic auth) | shipped | 2026-11-27 |
+| dashboard | Trang vốn, vị thế, lệnh, quyết định LLM, chi phí (trang đăng nhập, phiên 7 ngày, nút đăng xuất) | shipped | 2026-11-27 |
 | bot | Chạy tiền thật 24/7 (service `live`) | building | - |
