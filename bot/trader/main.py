@@ -534,7 +534,8 @@ def main():
             sys.exit("STRATEGY=v2 runs in MODE=paper only until the owner gives a separate go for live")
         return run_v2(mode, store)
     limits = Limits(leverage=int(os.getenv("LEVERAGE", "5")), risk_pct=float(os.getenv("RISK_PCT", "0.02")),
-                    floor_equity=float(os.getenv("FLOOR_EQUITY", "70")))
+                    floor_equity=float(os.getenv("FLOOR_EQUITY", "70")),
+                    daily_stop_pct=float(os.getenv("DAILY_STOP_PCT", "0.06")))
     ex = make_ccxt(mode)
     on_close = lambda **t: (store.log("trade_close", **t),
                             notify.closed(t["symbol"], t["pnl"], t["why"], t.get("r")))

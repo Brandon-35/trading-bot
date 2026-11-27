@@ -1,7 +1,7 @@
 ---
 section: decisions
 updated: 2026-11-28
-verified_commit: af4e993
+verified_commit: be91b6e
 ---
 
 | Id | Date | Decision | Reason | Status |
@@ -19,3 +19,4 @@ verified_commit: af4e993
 | D11 | 2026-11-27 | Lệnh của bot = clientOrderId bắt đầu `x-cvBPrNm9` và sau BOT_START; mọi số liệu bot + reconcile/floor/max_positions chỉ tính vị thế của bot | owner cũng trade tay trên cùng ví; bot không được đóng lệnh tay | active |
 | D12 | 2026-11-27 | Chiến lược v2 = tín hiệu code (pullback 4h) + hội đồng AI (3 phân tích, bull/bear, lead DeepSeek V3.2); rủi ro 2% đến khi ≥ 30 lệnh paper trung bình ≥ +0,10R rồi 3%; giữ 18,7 USDT, sàn 12, mục tiêu 120; chuyển live là quyết định riêng của owner | research: chưa có bot nhiều-AI nào lãi thật được kiểm chứng; Monte Carlo cho thấy rủi ro cao làm tăng tỉ lệ cháy | active |
 | D13 | 2026-11-28 | Mọi AI (v1 live + hội đồng v2: phân tích, bull/bear, lead) dùng `deepseek/deepseek-v4.1-flash-1017` | owner chốt; bản DeepSeek Flash mới nhất, $0,15/$0,6 mỗi 1M token, structured output chạy được, ~1,8 s/lần | active |
+| D14 | 2026-11-28 | Bot tiền thật: rủi ro 10%/lệnh, đòn bẩy 10x isolated, dừng ngày khi lỗ 20%, 10 cặp (BTC ETH SOL BNB XRP DOGE ADA LINK SUI AVAX); paper giữ 2%, 5x, 3 cặp | owner muốn thử 18→180 USDT trong 1 tháng, đã được báo Monte Carlo (+0,15R/lệnh, rủi ro 10%: ~26% đạt 10x, ~72% cháy). Code thêm chặn stop phải nằm trong ½ khoảng cách thanh lý | active |

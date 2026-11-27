@@ -75,6 +75,10 @@ services:
       MODE: live
       LIVE_CONFIRM: ${LIVE_CONFIRM:-}
       FLOOR_EQUITY: ${FLOOR_EQUITY:-70}   # full stop below this equity (USDT)
+      RISK_PCT: ${LIVE_RISK_PCT:-0.02}    # own name: RISK_PCT in .env would also reach the paper arms
+      LEVERAGE: ${LIVE_LEVERAGE:-5}
+      DAILY_STOP_PCT: ${LIVE_DAILY_STOP_PCT:-0.06}
+      SYMBOLS: ${SYMBOLS:-BTC/USDT:USDT,ETH/USDT:USDT,SOL/USDT:USDT}
       BOT_NAME: live
       BOT_START: ${BOT_START:-2026-11-27T06:25:00Z}   # bot fills before this are the owner's
       START_FUTURES: ${START_FUTURES:-18.7392}
