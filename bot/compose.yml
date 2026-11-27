@@ -1,0 +1,109 @@
+# Paper arena: one service per model, started only for the keys you have, e.g.
+#   docker compose --profile gpt --profile claude up -d --build
+# Live (real money): docker compose --profile live up -d --build   (needs BINANCE_* and LIVE_CONFIRM in .env)
+x-bot: &bot
+  build: .
+  image: trading-bot:latest
+  restart: unless-stopped
+  # no env_file: each service gets only its own LLM key (interpolated from .env by compose)
+  environment: &env
+    MODE: paper
+    TZ: Asia/Ho_Chi_Minh
+    DISCORD_WEBHOOK_URL: ${DISCORD_WEBHOOK_URL:-}
+  volumes:
+    - data:/data
+  logging:
+    driver: json-file
+    options: {max-size: "10m", max-file: "3"}
+
+services:
+  arena-gpt:
+    <<: *bot
+    profiles: [gpt]
+    environment:
+      <<: *env
+      BOT_NAME: gpt-6-luna
+      DB_PATH: /data/gpt.db
+      LLM_BASE_URL: https://api.openai.com/v1
+      LLM_MODEL: gpt-6-luna
+      LLM_API_KEY: ${OPENAI_API_KEY:-}
+      LLM_PRICE_IN: "0.10"
+      LLM_PRICE_OUT: "0.50"
+  arena-claude:
+    <<: *bot
+    profiles: [claude]
+    environment:
+      <<: *env
+      BOT_NAME: claude-haiku-5-5
+      DB_PATH: /data/claude.db
+      LLM_BASE_URL: https://api.anthropic.com/v1/
+      LLM_MODEL: claude-haiku-5-5
+      LLM_API_KEY: ${ANTHROPIC_API_KEY:-}
+      LLM_PRICE_IN: "0.10"
+      LLM_PRICE_OUT: "0.50"
+  arena-glm:
+    <<: *bot
+    profiles: [glm]
+    environment:
+      <<: *env
+      BOT_NAME: glm-5.3-flash
+      DB_PATH: /data/glm.db
+      LLM_BASE_URL: https://api.z.ai/api/paas/v4
+      LLM_MODEL: glm-5.3-flash
+      LLM_API_KEY: ${ZAI_API_KEY:-}
+      LLM_SCHEMA: json_object
+      LLM_PRICE_IN: "0.15"
+      LLM_PRICE_OUT: "0.50"
+  arena-kimi:
+    <<: *bot
+    profiles: [kimi]
+    environment:
+      <<: *env
+      BOT_NAME: kimi-k3.1-pro
+      DB_PATH: /data/kimi.db
+      LLM_BASE_URL: https://api.moonshot.ai/v1
+      LLM_MODEL: kimi-k3.1-pro
+      LLM_API_KEY: ${MOONSHOT_API_KEY:-}
+      LLM_SCHEMA: json_object
+      LLM_PRICE_IN: "2.00"
+      LLM_PRICE_OUT: "10.00"
+  live:
+    <<: *bot
+    profiles: [live]
+    environment:
+      <<: *env
+      MODE: live
+      LIVE_CONFIRM: ${LIVE_CONFIRM:-}
+      BOT_NAME: live
+      DB_PATH: /data/live.db
+      BINANCE_API_KEY: ${BINANCE_API_KEY:-}
+      BINANCE_API_SECRET: ${BINANCE_API_SECRET:-}
+      # the first LLM key that is set is used (order in trader/llm.py PROVIDERS)
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      ZAI_API_KEY: ${ZAI_API_KEY:-}
+      MOONSHOT_API_KEY: ${MOONSHOT_API_KEY:-}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      OPENROUTER_MODEL: ${OPENROUTER_MODEL:-anthropic/claude-haiku-5.5}
+      OPENROUTER_PRICE_IN: ${OPENROUTER_PRICE_IN:-0.10}
+      OPENROUTER_PRICE_OUT: ${OPENROUTER_PRICE_OUT:-0.50}
+  dashboard:   # read-only status page at https://trade.brandondev.online (edge Caddy), Basic auth in the app
+    image: trading-bot:latest
+    build: .
+    restart: unless-stopped
+    command: ["python", "-m", "trader.dashboard"]
+    environment:
+      TZ: Asia/Ho_Chi_Minh
+      DASH_USER: ${DASH_USER:-brandon}
+      DASH_PASSWORD: ${DASH_PASSWORD:-}
+    ports: ["127.0.0.1:8090:8080"]
+    networks: [default, edge]
+    volumes:
+      - data:/data
+
+networks:
+  edge:
+    external: true
+
+volumes:
+  data:

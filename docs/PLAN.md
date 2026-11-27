@@ -37,12 +37,13 @@ dashboards become its monitoring features.
 - [ ] Remove AI Studio leftovers (banner, `metadata.json`, import maps) from both apps
 - [ ] One `dev` command that runs both dashboards
 
-### Phase 3 — Bot core (`packages/`)
-- [ ] `exchange`: connector via `ccxt` (Binance first), market data + orders
-- [ ] `strategy`: strategy interface (signal from candles), first strategy = grid or DCA
-- [ ] `risk`: max position size, daily loss limit, kill switch
-- [ ] `backtest`: replay historical candles through a strategy, report PnL / drawdown
-- [ ] `engine`: paper mode default, live mode opt-in
+### Phase 3 — Bot core (`bot/`)
+Superseded 2026-11-27: the bot is an LLM-driven Python bot (owner decision), not a strategy/backtest package.
+Spec, numbers and acceptance: `docs/plans/2026-11-27-llm-futures-bot.md`; tracking: issue #1.
+- [x] `bot/trader/risk.py`: 2 % risk sizing, SL/RR checks, 6 % daily stop, 70 USDT full stop
+- [x] `bot/trader/exchange.py`: Binance live/demo (exchange-side SL/TP) + paper simulator
+- [x] `bot/trader/llm.py`: one OpenAI-compatible client for GLM, Kimi, OpenAI, Claude
+- [ ] Paper arena (4 models) → demo re-check → live 100 USDT (milestones M1–M4 on #1)
 
 ### Phase 4 — Dashboards as bot features
 - [ ] `chart-sync`: show bot entries/exits on the synced charts

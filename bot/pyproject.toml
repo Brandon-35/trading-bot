@@ -1,0 +1,18 @@
+[project]
+name = "bot"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = [
+    "ccxt>=4.5.94",
+    "httpx>=0.29.0",
+    "openai>=3.60.0",
+    "pydantic>=2.14.4",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.2.0",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]

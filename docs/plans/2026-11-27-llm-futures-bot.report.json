@@ -1,0 +1,94 @@
+{
+ "title": "Bot LLM Binance — key Binance OK, còn thiếu LLM key + nạp tiền",
+ "verdict": {
+  "class": "warn",
+  "vi": "Key Binance đạt: khoá IP, không rút được, bật Futures. Còn thiếu 1 key LLM và 100 USDT trong ví Futures.",
+  "en": "Binance key OK; need one LLM key and 100 USDT in the futures wallet."
+ },
+ "summary": {
+  "vi": "Mỗi giờ bot lấy giá + chỉ báo + ~20 tin crypto mới nhất (Cointelegraph, Decrypt, The Block), LLM quyết định, code kiểm tra rủi ro rồi tự đặt lệnh kèm SL/TP trên Binance. Không cần key demo nữa: đường đặt lệnh sẽ được thử trên sàn thật với ~12 USDT (tốn vài cent phí). LLM: có key nào dùng key đó (ưu tiên OpenAI → Anthropic → z.ai → Moonshot). Báo động gửi về Discord.",
+  "en": "News + Discord + auto LLM + live service added."
+ },
+ "stats": [
+  {
+   "label": "Key Binance",
+   "value": "PASS",
+   "hint": "ipRestrict, no withdraw, futures on, spot off"
+  },
+  {
+   "label": "Ví Futures",
+   "value": "0 USDT",
+   "hint": "cần 100 USDT"
+  },
+  {
+   "label": "Test",
+   "value": "28 pass"
+  },
+  {
+   "label": "LLM",
+   "value": "chưa có",
+   "hint": "OpenRouter đã hỗ trợ"
+  }
+ ],
+ "charts": [],
+ "sections": [
+  {
+   "heading": "Đã kiểm tra key Binance",
+   "md": "- `key_check` từ server Pháp: ký request OK.\n- Quyền: Reading ✓, Futures ✓; Withdrawals, Spot/Margin, Universal Transfer, Internal Transfer: **tắt**; khoá IP ✓.\n- Ví USDⓈ-M Futures: **0 USDT**, ví Spot ~0."
+  },
+  {
+   "heading": "Sau khi gửi trang này + nạp tiền, tôi sẽ",
+   "md": "1. Thêm key LLM vào `.env` trên server, gọi thử LLM thật.\n2. Thấy ≥ 100 USDT trong ví Futures → chạy thử lệnh ~12 USDT (SL/TP, đóng khi lỗi, restart).\n3. Xanh → bật bot `live` 24/7, báo về Discord."
+  }
+ ],
+ "needs": [
+  {
+   "id": "OPENROUTER_API_KEY",
+   "label": "OpenRouter API key (khuyên dùng: 1 key dùng được mọi model)",
+   "type": "secret",
+   "hint": "openrouter.ai/keys → Create key. Nạp ~5 USD credit là đủ vài tháng.",
+   "required": false
+  },
+  {
+   "id": "OPENAI_API_KEY",
+   "label": "OpenAI API key",
+   "type": "secret",
+   "required": false
+  },
+  {
+   "id": "ANTHROPIC_API_KEY",
+   "label": "Anthropic API key",
+   "type": "secret",
+   "required": false
+  },
+  {
+   "id": "ZAI_API_KEY",
+   "label": "z.ai API key",
+   "type": "secret",
+   "required": false
+  },
+  {
+   "id": "MOONSHOT_API_KEY",
+   "label": "Moonshot API key",
+   "type": "secret",
+   "required": false
+  },
+  {
+   "id": "DISCORD_WEBHOOK_URL",
+   "label": "Discord webhook URL",
+   "type": "secret",
+   "hint": "Kênh → Edit Channel → Integrations → Webhooks → New Webhook → Copy URL",
+   "required": false
+  }
+ ],
+ "links": [
+  {
+   "label": "PR #2",
+   "url": "https://github.com/Brandon-35/trading-bot/pull/2"
+  },
+  {
+   "label": "Issue #1",
+   "url": "https://github.com/Brandon-35/trading-bot/issues/1"
+  }
+ ]
+}
