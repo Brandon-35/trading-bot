@@ -89,7 +89,7 @@ services:
       ZAI_API_KEY: ${ZAI_API_KEY:-}
       MOONSHOT_API_KEY: ${MOONSHOT_API_KEY:-}
       OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
-      OPENROUTER_MODEL: ${OPENROUTER_MODEL:-anthropic/claude-haiku-5.5}
+      OPENROUTER_MODEL: ${OPENROUTER_MODEL:-deepseek/deepseek-v4.1-flash-1017}
       OPENROUTER_PRICE_IN: ${OPENROUTER_PRICE_IN:-0.10}
       OPENROUTER_PRICE_OUT: ${OPENROUTER_PRICE_OUT:-0.50}
   # v2 paper arms (no Binance keys: public data only). docker compose --profile paper2 up -d --build
@@ -124,7 +124,7 @@ services:
       SIGNAL: ${SIGNAL:-pullback}   # backtest 2026-11-27: 4h pullback +0.127R/trade after fees on 30 alts (720 d)
       UNIVERSE_N: ${UNIVERSE_N:-30}
       OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
-      OPENROUTER_MODEL: ${OPENROUTER_MODEL:-anthropic/claude-haiku-5.5}
+      OPENROUTER_MODEL: ${OPENROUTER_MODEL:-deepseek/deepseek-v4.1-flash-1017}
       OPENROUTER_PRICE_IN: ${OPENROUTER_PRICE_IN:-0.10}
       OPENROUTER_PRICE_OUT: ${OPENROUTER_PRICE_OUT:-0.50}
       LLM_DAILY_USD: ${LLM_DAILY_USD:-0.10}

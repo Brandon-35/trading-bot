@@ -82,7 +82,7 @@ class Bot:
             if s in mine and n < 2:
                 self.broker.close(s)
                 self.store.log("reconcile_close", symbol=s, protective=n)
-                notify.send(f"⚠️ {s}: position had {n}/2 protective orders, closed at market")
+                notify.send(f"⚠️ {notify.coin(s)}: thiếu lệnh bảo vệ ({n}/2), đã đóng vị thế")
             elif s not in positions and n:   # bot trigger orders only (protective_count)
                 self.broker.cancel_protective(s)
                 self.store.log("reconcile_cancel", symbol=s, orders=n)
@@ -101,8 +101,8 @@ class Bot:
             for s in list(positions):
                 self.broker.close(s)
             self.store.log("halt", equity=equity)
-            notify.send(f"🛑 FULL STOP: equity {equity:.2f} < {self.limits.floor_equity}. All positions closed. "
-                        "Run `python -m trader.main --clear-halt` to resume.")
+            notify.send(f"🛑 DỪNG HẲN: vốn {notify.num(equity)} < {notify.num(self.limits.floor_equity)} USDT, đã đóng hết. "
+                        "Mở lại: `python -m trader.main --clear-halt`")
             return
 
         snap, ref = snapshot(self.broker.data, SYMBOLS)
@@ -111,7 +111,7 @@ class Bot:
                                            "news": headlines()})
         self.store.log("llm_call", **meta)
         if "error" in meta:
-            notify.send(f"LLM error, holding: {meta['error'][:200]}")
+            notify.send(f"⚠️ AI lỗi, giữ nguyên vị thế: {meta['error'][:200]}")
 
         for d in decisions:
             reason = self.act(d, positions, ref, equity, stop)
@@ -127,7 +127,7 @@ class Bot:
             if d.symbol not in positions:
                 return "no position to close"
             self.broker.close(d.symbol)
-            notify.send(f"close {d.symbol}: {d.reason}")
+            notify.card(f"🤖 AI ĐÓNG · {notify.coin(d.symbol)}", color=notify.YELLOW, reason=d.reason)
             return None
         if stop == "daily":
             return "daily loss stop active"
@@ -149,19 +149,22 @@ class Bot:
         try:
             self.broker.open(d.symbol, d.action, qty, d.stop_loss, d.take_profit)
         except Exception as e:
-            notify.send(f"⚠️ {d.symbol} entry failed, flattened: {type(e).__name__}: {e}"[:300])
+            notify.send(f"⚠️ {notify.coin(d.symbol)}: vào lệnh lỗi, đã đóng: {type(e).__name__}: {e}"[:300])
             return f"order failed: {type(e).__name__}"
         self.store.log("trade_open", symbol=d.symbol, side=d.action, qty=qty, price=price,
                        sl=d.stop_loss, tp=d.take_profit, confidence=d.confidence)
-        notify.send(f"{d.action} {qty} {d.symbol} @~{price} SL {d.stop_loss} TP {d.take_profit} — {d.reason}")
+        notify.opened(d.symbol, d.action, qty, price, d.stop_loss, d.take_profit, self.limits.leverage,
+                      qty * abs(price - d.stop_loss), qty * abs(price - d.stop_loss) / equity if equity else 0, d.reason)
         return None
 
     def daily_summary(self):
         e = self.store.last("equity") or {}
         cost = self.store.db.execute(
             "SELECT COALESCE(SUM(json_extract(data,'$.cost')),0) FROM events WHERE kind='llm_call'").fetchone()[0]
-        notify.send(f"daily: equity {e.get('equity', 0):.2f}, open {list((e.get('positions') or {}))}, "
-                    f"LLM cost to date ${cost:.2f}")
+        open_ = [notify.coin(x) for x in (e.get('positions') or {})]
+        notify.card("📊 Tóm tắt ngày", [f"**Vốn:** {notify.num(e.get('equity', 0))} USDT",
+                                       f"**Đang mở:** {', '.join(open_) or 'không có'}",
+                                       f"**Chi phí AI từ đầu:** ${cost:.3f}"], notify.BLUE)
 
 
 class BotV2(Bot):
@@ -206,7 +209,7 @@ class BotV2(Bot):
             if cover < p["qty"] * (1 - 1e-6):
                 self.broker.close(s)
                 self.store.log("reconcile_close", symbol=s, cover=cover, qty=p["qty"])
-                notify.send(f"⚠️ {s}: stop covers {cover} of {p['qty']}, closed at market")
+                notify.send(f"⚠️ {notify.coin(s)}: stop chỉ phủ {cover}/{p['qty']}, đã đóng vị thế")
         for s in list(self.state):
             if s not in positions:
                 n = self.broker.protective_count(s)
@@ -224,7 +227,7 @@ class BotV2(Bot):
         if (price - target) * sg <= 0:
             self.broker.close(s)
             self.store.log("stop_breach_close", symbol=s, target=target, price=price, why=why)
-            notify.send(f"{s}: price {price} through the new stop {target}, closed ({why})")
+            notify.card(f"⚠️ ĐÓNG · {notify.coin(s)}", [f"Giá {notify.price(price)} đã vượt stop mới {notify.price(target)} ({notify.WHY.get(why, why)})"], notify.YELLOW)
             return False
         try:
             self.broker.move_stop(s, target, qty)
@@ -279,7 +282,7 @@ class BotV2(Bot):
             self.store.log("manage", symbol=s, **{k: res.get(k) for k in ("action", "new_stop", "rationale")})
             if res.get("action") == "close":
                 self.broker.close(s)
-                notify.send(f"committee close {s}: {res.get('rationale', '')}"[:300])
+                notify.card(f"🤖 AI ĐÓNG SỚM · {notify.coin(s)}", color=notify.YELLOW, reason=res.get("rationale", ""))
             elif res.get("action") == "tighten":
                 try:
                     ns = float(res["new_stop"])
@@ -432,8 +435,8 @@ class BotV2(Bot):
                        tp_r=tp_r, risk_pct=rp, leverage=lev, arm=self.arm, maker=fill["maker"],
                        risk=fill["qty"] * dist, confidence=conf)
         self._decision(s, side, sl, tp, conf, why, None)
-        notify.send(f"{side} {fill['qty']} {s} @{fill['entry']:.6g} SL {sl:.6g} TP1 {tp:.6g} {lev}x "
-                    f"risk {rp:.1%} — {why}"[:300])
+        notify.opened(s, side, fill["qty"], fill["entry"], sl, tp, lev, fill["qty"] * dist, rp,
+                      "" if why == "signal" else why, tp_label="Chốt ½ ở")
 
     def _decision(self, s, side, sl, tp, conf, why, reject):
         self.store.log("decision", symbol=s, action=side if reject is None else "hold", stop_loss=sl, take_profit=tp,
@@ -455,12 +458,14 @@ def run_v2(mode: str, store: Store):
                       floor_equity=float(os.getenv("FLOOR_EQUITY", "12")))
     ex = make_ccxt(mode)
     on_close = lambda **t: (store.log("trade_close", **t),
-                            notify.send(f"{t['why']} {t['symbol']} pnl {t['pnl']:+.3f} ({t['r']:+.2f}R)"))
+                            notify.closed(t["symbol"], t["pnl"], t["why"], t["r"]))
     broker = Paper(ex, 1, float(os.getenv("PAPER_START", "18.7392")), on_close,
                    state=store.last("paper_state"), save=lambda st: store.log("paper_state", **st), funding=False)
     bot = BotV2(broker, store, limits, mode, arm, signals, committee, budget, os.getenv("SIGNAL") or None,
                 int(os.getenv("UNIVERSE_N", "10")))
-    notify.send(f"started v2 arm={arm} mode={mode} floor={limits.floor_equity}")
+    notify.started([f"**Chế độ:** {'tiền ảo' if mode == 'paper' else mode}",
+                     *( [f"**Model AI:** {committee.LEAD_MODEL}"] if committee else [] ),
+                     f"**Dừng hẳn khi vốn <** {notify.num(limits.floor_equity)} USDT"])
     last_day = None
     while True:
         try:
@@ -481,7 +486,7 @@ def run_v2(mode: str, store: Store):
                 bot.daily_summary()
         except Exception as e:
             log.error("loop error: %s", notify.redact(f"{type(e).__name__}: {e}"))
-            notify.send(f"loop error: {type(e).__name__}: {e}"[:300])
+            notify.send(f"⚠️ Lỗi vòng lặp: {type(e).__name__}: {e}"[:300])
         time.sleep(20)
 
 
@@ -510,7 +515,7 @@ def main():
                     floor_equity=float(os.getenv("FLOOR_EQUITY", "70")))
     ex = make_ccxt(mode)
     on_close = lambda **t: (store.log("trade_close", **t),
-                            notify.send(f"{t['why']} {t['symbol']} pnl {t['pnl']:+.2f}"))
+                            notify.closed(t["symbol"], t["pnl"], t["why"], t.get("r")))
     broker = (Paper(ex, limits.leverage, float(os.getenv("PAPER_START", "100")), on_close,
                     state=store.last("paper_state"), save=lambda st: store.log("paper_state", **st))
               if mode == "paper" else Binance(ex, SYMBOLS, limits.leverage))
@@ -521,7 +526,8 @@ def main():
     if "--once" in sys.argv:
         bot.cycle()
         return
-    notify.send(f"started mode={mode} model={bot.llm.model} symbols={SYMBOLS}")
+    notify.started([f"**Chế độ:** {'tiền thật' if mode == 'live' else mode}", f"**Model AI:** {bot.llm.model}",
+                     f"**Cặp:** {', '.join(notify.coin(x) for x in SYMBOLS)}"])
     last_day = None
     while True:
         try:
@@ -542,7 +548,7 @@ def main():
                 bot.daily_summary()
         except Exception as e:
             log.error("loop error: %s", notify.redact(f"{type(e).__name__}: {e}"))
-            notify.send(f"loop error: {type(e).__name__}: {e}"[:300])
+            notify.send(f"⚠️ Lỗi vòng lặp: {type(e).__name__}: {e}"[:300])
         time.sleep(20)
 
 

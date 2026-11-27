@@ -78,7 +78,7 @@ color:var(--tx);font:14px/1.6 -apple-system,Segoe UI,Roboto,"Noto Sans",sans-ser
 <tr><td>Khi nào chốt lời / cắt lỗ?</td><td data-label="Trả lời">Bất kỳ lúc nào: lệnh SL/TP nằm sẵn <b>trên sàn Binance</b>, sàn tự khớp kể cả khi bot tắt. Bot chỉ dời stop (mỗi 20 s).</td></tr>
 <tr><td>Tin tức lấy từ đâu?</td><td data-label="Trả lời">RSS Cointelegraph, Decrypt, The Block (≤ 12 giờ gần nhất, 20 tin mới nhất) + chỉ số Fear &amp; Greed.</td></tr>
 <tr><td>AI có tự vào lệnh được không?</td><td data-label="Trả lời">v2: không. Code tìm setup, AI chỉ được <b>đồng ý / bỏ qua</b>, chọn SL 1–3 ATR và TP 1,5–4R. Size, đòn bẩy, stop đều do code.</td></tr>
-<tr><td>Mất bao nhiêu tiền AI?</td><td data-label="Trả lời">~$0,0007 mỗi lần hội đồng họp. Trần $0,10/ngày (tối đa ~$3/tháng).</td></tr>
+<tr><td>Mất bao nhiêu tiền AI?</td><td data-label="Trả lời">dưới $0,001 mỗi lần hội đồng họp. Trần $0,10/ngày (tối đa ~$3/tháng).</td></tr>
 <tr><td>Lỗ tối đa?</td><td data-label="Trả lời">2% vốn bot mỗi lệnh, tổng rủi ro mở ≤ 10%, dừng ngày khi lỗ 12% (v2) / 6% (v1), dừng hẳn khi equity &lt; 12 USDT.</td></tr>
 <tr><td>Báo cho tôi thế nào?</td><td data-label="Trả lời">Discord #trading-bot: mỗi lệnh vào/ra, lỗi, dừng; tóm tắt ngày lúc 08:00.</td></tr>
 </table>
@@ -130,9 +130,9 @@ color:var(--tx);font:14px/1.6 -apple-system,Segoe UI,Roboto,"Noto Sans",sans-ser
 <h2 id="committee">7. Hội đồng AI &amp; prompt</h2>
 <table>
 <tr><th>Vai</th><th>Model</th><th>Trả về</th></tr>
-<tr><td>3 chuyên gia (song song): Kỹ thuật · Dòng tiền phái sinh · Tin tức &amp; tâm lý</td><td data-label="Model"><code>qwen/qwen3-235b-a22b-2507</code></td><td data-label="Trả về">stance, confidence, ≤ 4 ý chính</td></tr>
-<tr><td>Bull → Bear (bear phản bác điểm mạnh nhất của bull)</td><td data-label="Model">qwen3</td><td data-label="Trả về">lập luận, điểm mạnh nhất</td></tr>
-<tr><td>Lead (xem thêm 10 lệnh gần nhất)</td><td data-label="Model"><code>deepseek/deepseek-v3.2</code></td><td data-label="Trả về">open/skip, confidence, SL ATR, TP R, lý do</td></tr>
+<tr><td>3 chuyên gia (song song): Kỹ thuật · Dòng tiền phái sinh · Tin tức &amp; tâm lý</td><td data-label="Model"><code>deepseek/deepseek-v4.1-flash-1017</code></td><td data-label="Trả về">stance, confidence, ≤ 4 ý chính</td></tr>
+<tr><td>Bull → Bear (bear phản bác điểm mạnh nhất của bull)</td><td data-label="Model">cùng model</td><td data-label="Trả về">lập luận, điểm mạnh nhất</td></tr>
+<tr><td>Lead (xem thêm 10 lệnh gần nhất)</td><td data-label="Model"><code>deepseek/deepseek-v4.1-flash-1017</code></td><td data-label="Trả về">open/skip, confidence, SL ATR, TP R, lý do</td></tr>
 </table>
 <p class="mut">Mặc định skip. Lỗi bất kỳ (AI lỗi, JSON sai, hết ngân sách) → skip, bot không crash. Mọi biên bản lưu sự kiện <code>debate</code>, xem ở tab "Hội đồng AI".</p>
 <details><summary>Prompt nguyên văn (v2)</summary><pre>ANALYST technical:   You are the technical analyst of a crypto futures desk. Judge only price action and indicators in the
@@ -162,7 +162,7 @@ closer to the price, never wider) or close early. Default is hold; close only if
 <details><summary>Prompt v1 (bot tiền thật, <code>bot/prompts/system.md</code>) — tóm tắt</summary><pre>Mỗi giờ nhận snapshot JSON: equity, vị thế, giá + ATR14/RSI14/EMA20/EMA50 khung 1h, funding, nến 4h/1h/15m, tin RSS.
 Trả cho MỖI cặp: long | short | close | hold, kèm stop_loss, take_profit, confidence.
 Code ép: stop ≥ max(0,5 ATR, 0,8% giá) và ≤ 3 ATR; TP ≥ 1,5 × stop; confidence &lt; 0,6 = hold; ≤ 2 vị thế.
-Model: upstage/solar-mini-4-5 qua OpenRouter.</pre></details>
+Model: deepseek/deepseek-v4.1-flash-1017 qua OpenRouter (từ 28/11, trước đó upstage/solar-mini-4-5).</pre></details>
 
 <h2 id="rules">8. Quản lý vốn — luật cứng trong code</h2>
 <table>
@@ -178,7 +178,7 @@ Model: upstage/solar-mini-4-5 qua OpenRouter.</pre></details>
 <h2 id="stack">9. Stack &amp; vận hành</h2>
 <table>
 <tr><td>Code</td><td>Python 3.12 · ccxt <code>binanceusdm</code> · pydantic · httpx · SQLite · 114 test (pytest)</td></tr>
-<tr><td>AI</td><td>OpenRouter: qwen3-235b (phân tích), deepseek-v3.2 (lead), solar-mini (v1)</td></tr>
+<tr><td>AI</td><td>OpenRouter: deepseek/deepseek-v4.1-flash-1017 cho mọi vai (v1 + hội đồng v2)</td></tr>
 <tr><td>Dashboard</td><td>Python <code>http.server</code> + JS thuần + TradingView Lightweight Charts · đăng nhập cookie ký · không giữ key Binance</td></tr>
 <tr><td>Server</td><td>Docker Compose, Caddy TLS · container <code>live</code>, <code>paper-signal</code>, <code>paper-committee</code>, <code>dashboard</code></td></tr>
 <tr><td>Deploy</td><td>Tay: <code>rsync bot/</code> → <code>/opt/services/trading-bot</code> → <code>docker compose --profile paper2 up -d --build</code>. Không CI.</td></tr>
