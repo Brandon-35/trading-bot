@@ -16,6 +16,8 @@ log = logging.getLogger("exchange")
 def make_ccxt(mode: str) -> ccxt.binanceusdm:
     if mode == "paper":
         return ccxt.binanceusdm({"enableRateLimit": True})   # public data only, no keys
+    if not (os.getenv("BINANCE_API_KEY") and os.getenv("BINANCE_API_SECRET")):
+        raise SystemExit(f"MODE={mode} needs BINANCE_API_KEY and BINANCE_API_SECRET")
     ex = ccxt.binanceusdm({"apiKey": os.environ["BINANCE_API_KEY"], "secret": os.environ["BINANCE_API_SECRET"],
                            "enableRateLimit": True})
     if mode == "demo":

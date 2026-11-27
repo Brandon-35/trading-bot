@@ -32,10 +32,16 @@ Paper trading is the default; live trading needs `MODE=live` **and** `LIVE_CONFI
 ```bash
 cd bot
 uv sync && uv run pytest -q          # tests
-cp .env.example .env && chmod 600 .env   # fill in the LLM keys
-docker compose up -d --build         # 4-model paper arena
-docker compose exec arena-gpt python -m trader.report /data/gpt.db /data/claude.db /data/glm.db /data/kimi.db
+cp .env.example .env && chmod 600 .env   # fill in the keys you have
+docker compose --profile gpt --profile claude up -d --build   # paper arena, one profile per model key
+docker compose --profile live up -d --build                    # real money: BINANCE_* + LIVE_CONFIRM in .env
+docker compose exec live python -m trader.report /data/live.db
 ```
+
+The live bot uses the first LLM key that is set (OpenAI, Anthropic, z.ai, Moonshot). Each hour it gets
+prices, indicators and recent crypto headlines (Cointelegraph, Decrypt, The Block); alerts go to
+`DISCORD_WEBHOOK_URL`. Before the first live start run `python -m trader.key_check` and
+`MODE=live LIVE_CONFIRM=I-ACCEPT-REAL-MONEY python -m trader.demo_check` (~12 USDT test orders).
 
 Risk rules live in `bot/trader/risk.py` (2 % risk per trade, stop-loss always on the exchange,
 6 % daily stop, full stop below 70 USDT). Clear a full stop with `python -m trader.main --clear-halt`.

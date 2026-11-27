@@ -13,6 +13,7 @@ from . import notify
 from .exchange import Binance, Paper, make_ccxt
 from .llm import LLM
 from .market import snapshot
+from .news import headlines
 from .risk import Limits, halt_reason, size, validate
 from .store import Store
 
@@ -76,7 +77,8 @@ class Bot:
 
         snap, ref = snapshot(self.broker.data, SYMBOLS)
         decisions, meta = self.llm.decide({"time_utc": time.strftime("%Y-%m-%d %H:%M", time.gmtime()),
-                                           "equity": round(equity, 2), "open_positions": positions, "symbols": snap})
+                                           "equity": round(equity, 2), "open_positions": positions, "symbols": snap,
+                                           "news": headlines()})
         self.store.log("llm_call", **meta)
         if "error" in meta:
             notify.send(f"LLM error, holding: {meta['error'][:200]}")
@@ -132,15 +134,13 @@ class Bot:
 
 def main():
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(message)s")
-    for name in ("httpx", "httpx2"):   # request log lines contain URLs; the Telegram one carries the token
+    for name in ("httpx", "httpx2"):   # request log lines contain URLs; the Discord webhook URL carries its token
         logging.getLogger(name).setLevel(logging.WARNING)
     mode = os.getenv("MODE", "paper")
     if mode not in ("paper", "demo", "live"):
         sys.exit(f"MODE must be paper, demo or live, got {mode!r}")
     if mode == "live" and os.getenv("LIVE_CONFIRM") != "I-ACCEPT-REAL-MONEY":
         sys.exit("MODE=live needs LIVE_CONFIRM=I-ACCEPT-REAL-MONEY")
-    if not os.getenv("LLM_API_KEY") and "--clear-halt" not in sys.argv:
-        sys.exit("LLM_API_KEY is empty")
     store = Store(os.getenv("DB_PATH", "data/bot.db"))
     if "--clear-halt" in sys.argv:
         store.log("halt_clear")

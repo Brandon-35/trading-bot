@@ -1,6 +1,6 @@
 # Paper arena: one service per model, started only for the keys you have, e.g.
 #   docker compose --profile gpt --profile claude up -d --build
-# Live/demo: see README.
+# Live (real money): docker compose --profile live up -d --build   (needs BINANCE_* and LIVE_CONFIRM in .env)
 x-bot: &bot
   build: .
   image: trading-bot:latest
@@ -9,8 +9,7 @@ x-bot: &bot
   environment: &env
     MODE: paper
     TZ: Asia/Ho_Chi_Minh
-    TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
-    TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID:-}
+    DISCORD_WEBHOOK_URL: ${DISCORD_WEBHOOK_URL:-}
   volumes:
     - data:/data
   logging:
@@ -68,6 +67,22 @@ services:
       LLM_SCHEMA: json_object
       LLM_PRICE_IN: "2.00"
       LLM_PRICE_OUT: "10.00"
+  live:
+    <<: *bot
+    profiles: [live]
+    environment:
+      <<: *env
+      MODE: live
+      LIVE_CONFIRM: ${LIVE_CONFIRM:-}
+      BOT_NAME: live
+      DB_PATH: /data/live.db
+      BINANCE_API_KEY: ${BINANCE_API_KEY:-}
+      BINANCE_API_SECRET: ${BINANCE_API_SECRET:-}
+      # the first LLM key that is set is used (order in trader/llm.py PROVIDERS)
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      ZAI_API_KEY: ${ZAI_API_KEY:-}
+      MOONSHOT_API_KEY: ${MOONSHOT_API_KEY:-}
 
 volumes:
   data:

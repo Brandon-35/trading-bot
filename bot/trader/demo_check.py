@@ -1,6 +1,7 @@
-"""Order-path checks on Binance DEMO (fake money) with fixed decisions, no LLM. Covers plan AC5-AC7.
+"""Order-path checks with fixed decisions, no LLM. Covers plan AC5-AC7.
 
-    MODE=demo BINANCE_API_KEY=... BINANCE_API_SECRET=... python -m trader.demo_check
+    MODE=demo|live BINANCE_API_KEY=... BINANCE_API_SECRET=... python -m trader.demo_check
+On live this trades ~12 USDT SOL notional for real; expected cost a few cents (fees + one tight stop).
 """
 import os
 import sys
@@ -20,11 +21,12 @@ def say(ok: bool, what: str):
 
 
 def main():
-    if os.getenv("MODE") != "demo":
-        sys.exit("demo_check refuses to run unless MODE=demo")
-    ex = make_ccxt("demo")
+    mode = os.getenv("MODE")
+    if mode not in ("demo", "live") or mode == "live" and os.getenv("LIVE_CONFIRM") != "I-ACCEPT-REAL-MONEY":
+        sys.exit("demo_check needs MODE=demo, or MODE=live with LIVE_CONFIRM=I-ACCEPT-REAL-MONEY")
+    ex = make_ccxt(mode)
     b = Binance(ex, SYMBOLS, 5)
-    bot = Bot(b, None, Store("/tmp/demo_check.db"), Limits(), "demo")
+    bot = Bot(b, None, Store("/tmp/demo_check.db"), Limits(), mode)
     results = []
     px = float(ex.fetch_ticker(S)["last"])
     qty = float(ex.amount_to_precision(S, 12 / px))            # ~12 USDT notional
@@ -38,8 +40,8 @@ def main():
     results.append(say(S in b.positions() and b.protective_count(S) == 2, "AC5a still open and protected after reconcile"))
 
     # AC7: a fresh broker (restart) with the position open must start and reconcile without a duplicate entry
-    b2 = Binance(make_ccxt("demo"), SYMBOLS, 5)
-    Bot(b2, None, Store("/tmp/demo_check.db"), Limits(), "demo").reconcile(b2.positions())
+    b2 = Binance(make_ccxt(mode), SYMBOLS, 5)
+    Bot(b2, None, Store("/tmp/demo_check.db"), Limits(), mode).reconcile(b2.positions())
     p = b2.positions().get(S)
     results.append(say(bool(p) and abs(p["qty"] - qty) < 1e-9 and b2.protective_count(S) == 2,
                        "AC7 restart keeps one position with its SL/TP"))

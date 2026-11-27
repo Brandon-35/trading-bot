@@ -146,10 +146,11 @@ Operational milestones (weeks later, tracked on the GitHub issue, not ticked in 
 - M4 — live: 72 h with no restart loop and a daily Telegram summary; first live trade has its SL on the exchange.
 
 ## Needs
-- NEEDS: BINANCE_DEMO_KEY — demo.binance.com API key + secret (Phase 3; used by `python -m trader.demo_check` for AC5–AC7)
+- Superseded 2026-11-27 (owner): no demo key; order path is checked on live with ~12 USDT. Was: BINANCE_DEMO_KEY — demo.binance.com API key + secret (Phase 3; used by `python -m trader.demo_check` for AC5–AC7)
 - NEEDS: BINANCE_LIVE_KEY — live key: Futures on, withdrawals off, IP whitelist 5.189.155.78; read-only at first for Phase 0a, Futures trading switched on only at Phase 4
 - NEEDS: LLM_KEYS — pay-as-you-go keys for z.ai (GLM), platform.moonshot.ai (Kimi), OpenAI, Anthropic (Phase 1; AC3 via `python -m trader.llm --dry`; local ~/.config/anthropic key returns 401)
-- NEEDS: TELEGRAM — bot token from @BotFather + chat id (Phase 2)
+- Superseded 2026-11-27 (owner): Discord instead of Telegram.
+- NEEDS: DISCORD_WEBHOOK_URL — channel webhook for alerts (`trader/notify.py`)
 - NEEDS: FUNDING — 100 USDT moved into the USDⓈ-M futures wallet (Phase 4)
 
 ## Files
@@ -692,3 +693,11 @@ Operational milestones (weeks later, tracked on the GitHub issue, not ticked in 
 - Known limit: paper funding assumes 8 h for every symbol; SOL may be 4 h.
 - Smoke on server-brandon-service (paper, invalid LLM key): data fetch from Binance FR OK, LLM 401 → hold, events written; image builds; `MODE=Live`/`prod` refused.
 - Local `~/.config/anthropic/api-key.env` key returns 401 (invalid), so AC3 waits for the owner's keys.
+
+## Owner changes — 2026-11-27 (chat)
+1. No Binance demo key: the order-path checks (AC5–AC7) run on live with `trader.demo_check` at ~12 USDT SOL notional; the demo stage of the go-live gate is dropped.
+2. Alerts go to Discord (`DISCORD_WEBHOOK_URL`), Telegram removed.
+3. The bot (LLM + risk code) decides every trade by itself; no manual approval per trade (already the design).
+4. News: recent headlines from Cointelegraph, Decrypt and The Block RSS go into the hourly snapshot (`trader/news.py`); the prompt treats them as data, not instructions. CoinDesk dropped (308 redirect from the server).
+5. The live bot uses whichever LLM key is present, cheapest first (`trader/llm.py` PROVIDERS); compose service `live` (profile `live`).
+- Live start still needs `LIVE_CONFIRM=I-ACCEPT-REAL-MONEY` and the owner's explicit choice on the report page.

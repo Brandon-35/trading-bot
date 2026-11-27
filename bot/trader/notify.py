@@ -1,4 +1,4 @@
-"""Telegram alerts. Without TELEGRAM_BOT_TOKEN the message only goes to stdout."""
+"""Discord alerts via a channel webhook. Without DISCORD_WEBHOOK_URL the message only goes to stdout."""
 import logging
 import os
 import re
@@ -17,11 +17,10 @@ def send(text: str):
     tag = os.getenv("BOT_NAME", "bot")
     text = redact(text)
     log.info(text)
-    token, chat = os.getenv("TELEGRAM_BOT_TOKEN"), os.getenv("TELEGRAM_CHAT_ID")
-    if not (token and chat):
+    url = os.getenv("DISCORD_WEBHOOK_URL", "")
+    if not url.startswith("https://discord.com/api/webhooks/"):
         return
     try:
-        httpx.post(f"https://api.telegram.org/bot{token}/sendMessage",
-                   json={"chat_id": chat, "text": f"[{tag}] {text}"[:4000]}, timeout=10)
+        httpx.post(url, json={"content": f"[{tag}] {text}"[:1900]}, timeout=10)
     except Exception as e:   # an alert failure must never stop trading logic
-        log.warning("telegram failed: %s", type(e).__name__)
+        log.warning("discord failed: %s", type(e).__name__)

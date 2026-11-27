@@ -38,15 +38,35 @@ def _schema() -> dict:
     return {"type": "json_schema", "json_schema": {"name": "reply", "strict": True, "schema": s}}
 
 
+# key env, base_url, model, schema mode, $ per 1M tokens in/out; first key present wins (cheapest first)
+PROVIDERS = [
+    ("OPENAI_API_KEY", "https://api.openai.com/v1", "gpt-6-luna", "json_schema", 0.10, 0.50),
+    ("ANTHROPIC_API_KEY", "https://api.anthropic.com/v1/", "claude-haiku-5-5", "json_schema", 0.10, 0.50),
+    ("ZAI_API_KEY", "https://api.z.ai/api/paas/v4", "glm-5.3-flash", "json_object", 0.15, 0.50),
+    ("MOONSHOT_API_KEY", "https://api.moonshot.ai/v1", "kimi-k3.1-pro", "json_object", 2.00, 10.00),
+]
+
+
+def pick() -> dict:
+    """Explicit LLM_* env wins; otherwise the first provider whose API key is set."""
+    if os.getenv("LLM_API_KEY"):
+        return {"key": os.environ["LLM_API_KEY"], "url": os.environ["LLM_BASE_URL"], "model": os.environ["LLM_MODEL"],
+                "schema": os.getenv("LLM_SCHEMA", "json_schema"), "pin": float(os.getenv("LLM_PRICE_IN", "0")),
+                "pout": float(os.getenv("LLM_PRICE_OUT", "0"))}
+    for env, url, model, schema, pin, pout in PROVIDERS:
+        if os.getenv(env):
+            return {"key": os.environ[env], "url": url, "model": model, "schema": schema, "pin": pin, "pout": pout}
+    raise SystemExit("no LLM key: set one of " + ", ".join(p[0] for p in PROVIDERS))
+
+
 class LLM:
     def __init__(self):
-        self.model = os.environ["LLM_MODEL"]
-        self.client = OpenAI(base_url=os.environ["LLM_BASE_URL"], api_key=os.environ["LLM_API_KEY"],
-                             timeout=60, max_retries=2)
-        self.schema_mode = os.getenv("LLM_SCHEMA", "json_schema")   # json_schema | json_object
-        self.price_in = float(os.getenv("LLM_PRICE_IN", "0"))       # USD per 1M tokens
-        self.price_out = float(os.getenv("LLM_PRICE_OUT", "0"))
-        self.debug = False   # --dry prints the full provider error to stdout (never to the store or Telegram)
+        c = pick()
+        self.model = c["model"]
+        self.client = OpenAI(base_url=c["url"], api_key=c["key"], timeout=60, max_retries=2)
+        self.schema_mode = c["schema"]   # json_schema | json_object
+        self.price_in, self.price_out = c["pin"], c["pout"]   # USD per 1M tokens
+        self.debug = False   # --dry prints the full provider error to stdout (never to the store or Discord)
 
     def decide(self, snapshot: dict) -> tuple[list[Decision], dict]:
         """Return (decisions, call metadata). Decisions are [] on any error."""

@@ -1,4 +1,4 @@
-"""AC1: signed read with the LIVE key from this host, and the key's permissions. Places no order.
+"""AC1: signed read with the live key from this host, and the key's permissions. Places no order.
 
     BINANCE_API_KEY=... BINANCE_API_SECRET=... python -m trader.key_check
 """
@@ -16,8 +16,8 @@ def main():
                       "secret": os.environ["BINANCE_API_SECRET"]}).sapi_get_account_apirestrictions()
     keys = ("ipRestrict", "enableWithdrawals", "enableFutures", "enableReading")
     print("restrictions:", {k: r.get(k) for k in keys})
-    ok = r.get("ipRestrict") is True and r.get("enableWithdrawals") is False
-    print(("PASS" if ok else "FAIL") + " key is IP-restricted and cannot withdraw")
+    ok = r.get("ipRestrict") is True and r.get("enableWithdrawals") is False and r.get("enableFutures") is True
+    print(("PASS" if ok else "FAIL") + " key is IP-restricted, cannot withdraw, can trade futures")
     sys.exit(0 if ok else 1)
 
 
