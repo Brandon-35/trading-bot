@@ -112,7 +112,7 @@ function tickLive() {
   if (!lastLive) { s.textContent = 'đang kết nối...'; return; }
   const age = Math.max(0, Math.round(Date.now() / 1000 - lastLive));
   s.textContent = 'TRỰC TIẾP · cập nhật ' + (age < 90 ? age + ' giây' : Math.round(age / 60) + ' phút') + ' trước';
-  b.classList.toggle('stale', age > 30);
+  b.classList.toggle('stale', age > 60);   // bot loop writes every ~20 s, plus slow sync passes
 }
 setInterval(tickLive, 1000);
 
