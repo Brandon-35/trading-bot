@@ -359,6 +359,12 @@ class BotV2(Bot):
         mult, tp_r = (setup.get("stop_dist") or 2.0 * atr) / atr, 2.0     # the signal's own stop (2 ATR today), TP1 at 2R
         why = "signal"
         if self.arm == "committee":
+            m = self.broker.market(s)   # no LLM spend on a setup even the lead's tightest stop (1 ATR) cannot size
+            _, r = size_v2(base, risk_pct(self.closed_r(), lim), max(atr, lim.sl_min_pct * price), price,
+                           m["precision"]["amount"], m["limits"]["amount"]["min"] or 0, m["limits"]["cost"]["min"] or 0,
+                           lim)
+            if r:
+                return reject(f"unsizable before committee: {r}")
             if self.budget and not self.budget.ok():
                 return reject("LLM daily budget used")
             recent = [{k: e.get(k) for k in ("symbol", "side", "r", "why")} for e in self.store.all("trade_close")[-10:]]

@@ -526,3 +526,14 @@ def test_committee_tighten_only_moves_in_the_safe_direction(tmp_path):
     assert b.calls[-1] == ("close", S)
     sig = bot2(FB(), tmp_path / "..", arm="signal", committee=C({"action": "close"}))
     sig.manage_hourly()                                  # signal arm never consults the committee
+
+
+def test_committee_is_not_called_for_a_setup_that_cannot_be_sized(tmp_path):
+    called = []
+    class C:
+        def decide(self, *a): called.append(1); return {"action": "open", "side": "long", "sl_atr": 1.0, "tp_r": 2}
+    b, x = fresh(tmp_path, "a", equity=18.7392)
+    x.arm, x.committee = "committee", C()
+    x.enter(setup(price=1.0, atr=0.1), x.base())       # even 1 ATR: 0.3748 / 0.1 = 3.7 USDT < 5 min notional
+    assert not called and not b.calls
+    assert x.store.last("decision")["reject"].startswith("unsizable before committee")
