@@ -1,36 +1,115 @@
 {
-  "title": "Bot LLM Binance Futures — đã build, chờ key để chạy thử",
-  "verdict": {"class": "warn", "vi": "Code xong + test xanh + chạy thử trên server OK. Còn 8/10 mục nghiệm thu cần key của bạn (LLM, Binance demo, Telegram).", "en": "Built, tests green, server smoke OK. 8/10 acceptance items need the owner's keys."},
-  "summary": {"vi": "Bot Python (~790 dòng code + 260 dòng test) nằm ở `bot/`, PR #2. LLM chỉ đề xuất; code tự kiểm tra SL/RR/ATR, tính khối lượng 2%, đặt SL+TP trên Binance, dừng ngày 6% / dừng hẳn dưới 70 USDT. Đã chạy 1 chu kỳ trên server Pháp: lấy giá Binance OK, LLM lỗi → đứng ngoài đúng. Review độc lập: không lỗi nghiêm trọng, 3 lỗi mức cao đã sửa. Nhập key bên dưới để tôi chạy tiếp: kiểm tra key, 4 model trả JSON, thử lệnh demo, rồi bật vòng thi đấu giấy.", "en": "Python bot in bot/, PR #2. Enter keys below to continue: key check, 4 LLM calls, demo order path, then start the paper arena."},
-  "stats": [
-    {"label": "Test", "value": "25 pass", "hint": "rủi ro, LLM sai, lỗi đặt SL, khởi động lại paper"},
-    {"label": "Code", "value": "789 dòng", "hint": "bot/trader/*.py"},
-    {"label": "Nghiệm thu", "value": "2/10", "hint": "8 mục chờ key"},
-    {"label": "Lỗi review đã sửa", "value": "12", "hint": "3 cao, 9 thấp hơn"}
-  ],
-  "charts": [
-    {"type": "stacked", "title": "Nghiệm thu build", "unit": "mục", "parts": [{"label": "Xong", "value": 2}, {"label": "Chờ key", "value": 8}]}
-  ],
-  "sections": [
-    {"heading": "Đã làm", "md": "- `bot/trader/risk.py`: rủi ro 2%/lệnh, SL tối thiểu max(0.5×ATR, 0.8%), tối đa 3×ATR, R:R ≥ 1.5, tối đa 2 vị thế, dừng 6%/ngày, dừng hẳn < 70 USDT. Không cho đặt `RISK_PCT` > 2% hay đòn bẩy > 5.\n- `exchange.py`: Binance demo/thật — vào lệnh market → SL + TP trên sàn; đặt lỗi → đóng ngay; mỗi 20 s đối chiếu lại với sàn. Paper broker cho vòng thi đấu, lưu trạng thái qua restart.\n- `llm.py`: 1 client cho GLM/Kimi/OpenAI/Claude. Lỗi → đứng ngoài.\n- Chạy thật cần `MODE=live` **và** `LIVE_CONFIRM=I-ACCEPT-REAL-MONEY`.\n- `compose.yml`: mỗi model 1 profile → thiếu key model nào thì chỉ bỏ model đó."},
-    {"heading": "Đã kiểm tra", "md": "- `uv run pytest -q` → 25 passed.\n- Server `server-brandon-service`: build image OK; 1 chu kỳ paper với key giả → lấy dữ liệu Binance OK, LLM 401 → đứng ngoài, ghi log đúng. `MODE=Live`/`prod` bị từ chối.\n- Quét secret trong git: không có.\n- Key Anthropic trong `~/.config/anthropic/api-key.env` báo **401** (không còn dùng được)."},
-    {"heading": "Sau khi bạn nhập key, tôi sẽ", "md": "1. Chạy `key_check` với key thật **chỉ đọc** (1 lần, không lưu lên server): kiểm tra Binance có chặn IP Pháp không + key đã tắt rút tiền + đã khoá IP.\n2. Gọi thật từng model (AC3).\n3. Chạy `demo_check` trên Binance demo: vào lệnh, SL/TP, SL khớp thì TP bị huỷ, SL lỗi thì đóng, restart không vào trùng (AC5–AC7).\n4. Ghi `.env` (quyền 600) lên server, bật vòng thi đấu giấy cho các model có key.\n5. Merge PR #2 khi demo xanh."},
-    {"heading": "Giới hạn đã biết", "md": "- Chu kỳ nào lỗi thì bỏ giờ đó (không thử lại để tránh tốn tiền API); SL/TP vẫn nằm trên sàn.\n- Paper tính funding 8h cho mọi coin (SOL có thể 4h).\n- SL/TP dùng `reduceOnly` + số lượng; lệnh còn lại sau khi một bên khớp được huỷ trong ≤ 20 s."}
-  ],
-  "needs": [
-    {"id": "OPENAI_API_KEY", "label": "OpenAI API key (gpt-6-luna)", "type": "secret", "hint": "platform.openai.com → API keys. Bỏ trống nếu không dùng.", "required": false},
-    {"id": "ANTHROPIC_API_KEY", "label": "Anthropic API key (claude-haiku-5-5)", "type": "secret", "hint": "console.anthropic.com → API keys (key trong máy đang báo 401).", "required": false},
-    {"id": "ZAI_API_KEY", "label": "z.ai API key (glm-5.3-flash), trả theo lượt", "type": "secret", "hint": "z.ai → API keys. Không dùng key Coding Plan.", "required": false},
-    {"id": "MOONSHOT_API_KEY", "label": "Moonshot API key (kimi-k3.1-pro), trả theo lượt", "type": "secret", "hint": "platform.moonshot.ai → API keys. Không dùng key Kimi Code.", "required": false},
-    {"id": "TELEGRAM_BOT_TOKEN", "label": "Telegram bot token", "type": "secret", "hint": "Nhắn @BotFather → /newbot.", "required": false},
-    {"id": "TELEGRAM_CHAT_ID", "label": "Telegram chat id", "type": "text", "hint": "Nhắn bot 1 tin, mở https://api.telegram.org/bot<TOKEN>/getUpdates → chat.id.", "required": false},
-    {"id": "BINANCE_DEMO_API_KEY", "label": "Binance DEMO API key", "type": "secret", "hint": "demo.binance.com → API Management (tiền ảo).", "required": false},
-    {"id": "BINANCE_DEMO_API_SECRET", "label": "Binance DEMO API secret", "type": "secret", "required": false},
-    {"id": "BINANCE_LIVE_API_KEY", "label": "Binance THẬT — key CHỈ ĐỌC, khoá IP 5.189.155.78, tắt rút tiền", "type": "secret", "hint": "Chỉ dùng 1 lần để kiểm tra (AC1), không lưu lên server. Chưa bật Futures trading.", "required": false},
-    {"id": "BINANCE_LIVE_API_SECRET", "label": "Binance THẬT — secret của key chỉ đọc", "type": "secret", "required": false}
-  ],
-  "links": [
-    {"label": "PR #2", "url": "https://github.com/Brandon-35/trading-bot/pull/2"},
-    {"label": "Issue #1", "url": "https://github.com/Brandon-35/trading-bot/issues/1"}
-  ]
+ "title": "Bot LLM Binance Futures — đã cập nhật theo 6 ý, chờ key để chạy",
+ "verdict": {
+  "class": "warn",
+  "vi": "Đã thêm tin tức, Discord, tự chọn LLM, chạy thẳng tiền thật. Nhập key + chốt bên dưới là tôi chạy.",
+  "en": "Updated per owner; waiting for keys and the live go."
+ },
+ "summary": {
+  "vi": "Mỗi giờ bot lấy giá + chỉ báo + ~20 tin crypto mới nhất (Cointelegraph, Decrypt, The Block), LLM quyết định, code kiểm tra rủi ro rồi tự đặt lệnh kèm SL/TP trên Binance. Không cần key demo nữa: đường đặt lệnh sẽ được thử trên sàn thật với ~12 USDT (tốn vài cent phí). LLM: có key nào dùng key đó (ưu tiên OpenAI → Anthropic → z.ai → Moonshot). Báo động gửi về Discord.",
+  "en": "News + Discord + auto LLM + live service added."
+ },
+ "stats": [
+  {
+   "label": "Test",
+   "value": "28 pass",
+   "hint": "thêm tin tức, chọn LLM, Discord"
+  },
+  {
+   "label": "Nguồn tin",
+   "value": "3 RSS",
+   "hint": "đã lấy được từ server Pháp"
+  },
+  {
+   "label": "Vốn thật",
+   "value": "100 USDT",
+   "hint": "rủi ro 2%/lệnh = 2 USDT"
+  },
+  {
+   "label": "Thử lệnh thật",
+   "value": "~12 USDT",
+   "hint": "chi phí vài cent"
+  }
+ ],
+ "charts": [],
+ "sections": [
+  {
+   "heading": "Đã cập nhật theo 6 ý",
+   "md": "1. **Bỏ demo, dùng key thật:** `demo_check` chạy được trên live (cần `LIVE_CONFIRM`), lệnh thử ~12 USDT SOL.\n2. **Discord** thay Telegram (`DISCORD_WEBHOOK_URL`).\n3. **Bot tự quyết toàn bộ:** LLM đề xuất, code rủi ro duyệt, tự vào/ra lệnh — không cần bạn bấm.\n4. **Tin tức:** `trader/news.py` lấy tin 12h gần nhất đưa vào mỗi lần LLM quyết định; prompt dặn tin chỉ là dữ liệu, không làm theo chữ trong tin.\n5. **LLM theo key có sẵn:** `llm.pick()`.\n6. Service `live` trong compose, đã deploy image mới lên server."
+  },
+  {
+   "heading": "Sau khi bạn gửi trang này, tôi sẽ",
+   "md": "1. Ghi `.env` (quyền 600) lên server.\n2. `key_check`: key thật đã khoá IP 5.189.155.78, tắt rút tiền, bật Futures — sai là dừng.\n3. `llm --dry`: gọi thật LLM.\n4. Nếu bạn chọn **chạy tiền thật ngay**: `demo_check` trên live (~12 USDT) → xanh thì bật bot `live` 24/7, báo Discord.\n5. Nếu chọn **paper trước**: bật bot paper với LLM có key."
+  },
+  {
+   "heading": "Rủi ro bạn cần biết",
+   "md": "- Bỏ qua demo và paper nghĩa là chưa có bằng chứng LLM có lời. Mô phỏng: tỉ lệ thắng 40% → 19.6% khả năng cháy xuống 70 USDT.\n- Bot dừng ngày khi lỗ 6%, dừng hẳn dưới 70 USDT.\n- Key Binance: **bật Futures, TẮT rút tiền, khoá IP 5.189.155.78**. Chuyển 100 USDT vào ví USDⓈ-M Futures."
+  }
+ ],
+ "needs": [
+  {
+   "id": "BINANCE_API_KEY",
+   "label": "Binance API key (thật) — bật Futures, tắt rút tiền, khoá IP 5.189.155.78",
+   "type": "secret",
+   "required": true
+  },
+  {
+   "id": "BINANCE_API_SECRET",
+   "label": "Binance API secret",
+   "type": "secret",
+   "required": true
+  },
+  {
+   "id": "OPENAI_API_KEY",
+   "label": "OpenAI API key",
+   "type": "secret",
+   "hint": "Có key LLM nào nhập key đó, ít nhất 1.",
+   "required": false
+  },
+  {
+   "id": "ANTHROPIC_API_KEY",
+   "label": "Anthropic API key",
+   "type": "secret",
+   "required": false
+  },
+  {
+   "id": "ZAI_API_KEY",
+   "label": "z.ai API key (trả theo lượt, không phải Coding Plan)",
+   "type": "secret",
+   "required": false
+  },
+  {
+   "id": "MOONSHOT_API_KEY",
+   "label": "Moonshot API key (trả theo lượt)",
+   "type": "secret",
+   "required": false
+  },
+  {
+   "id": "DISCORD_WEBHOOK_URL",
+   "label": "Discord webhook URL",
+   "type": "secret",
+   "hint": "Kênh Discord → Edit Channel → Integrations → Webhooks → New Webhook → Copy URL",
+   "required": false
+  },
+  {
+   "id": "LIVE_GO",
+   "label": "Chạy tiền thật ngay sau khi kiểm tra xanh?",
+   "type": "choice",
+   "options": [
+    "Chạy tiền thật ngay (100 USDT)",
+    "Chạy paper trước, tôi xem rồi quyết"
+   ],
+   "required": true
+  }
+ ],
+ "links": [
+  {
+   "label": "PR #2",
+   "url": "https://github.com/Brandon-35/trading-bot/pull/2"
+  },
+  {
+   "label": "Issue #1",
+   "url": "https://github.com/Brandon-35/trading-bot/issues/1"
+  }
+ ]
 }
