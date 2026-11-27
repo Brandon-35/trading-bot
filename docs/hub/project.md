@@ -23,5 +23,6 @@ Repo còn chứa hai app cũ: `apps/p2p-dashboard` (Next.js) và `apps/chart-syn
 ## Links
 | Name | URL |
 |---|---|
-| Dashboard | https://trade.brandondev.online |
+| Dashboard | trade.brandondev.online (Basic auth) |
+| Health | https://trade.brandondev.online/health |
 | Repo | https://github.com/Brandon-35/trading-bot |
