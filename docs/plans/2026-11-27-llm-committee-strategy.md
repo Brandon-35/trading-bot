@@ -99,16 +99,22 @@ Replace the single hourly LLM call on BTC/ETH/SOL with a deterministic signal en
 
 ## Acceptance
 <!-- Tick an item only with proof: replace the placeholder with `<command → decisive output line | screenshot path | URL>`; a tick without evidence counts as open. -->
-- [ ] AC0 — backtest harness reports fee-inclusive results for ≥ 3 signal candidates; edge gate documented — evidence: <fill>
-- [ ] AC1 — signal engine scans the alt universe every 15 min and logs setups; derivatives data stored (tests + live dry scan) — evidence: <fill>
-- [ ] AC2 — committee: 3 analysts + bull/bear + lead produce a typed decision; transcript stored as `debate` event — evidence: <fill>
-- [ ] AC3 — sizing from bot value, total-open-risk cap, liq distance, min-notional reject, 2% cap until edge gate, reconcile-after-TP1 and stop replacement enforced with tests — evidence: <fill>
-- [ ] AC4 — LLM daily cost cap enforced; average committee cost per run measured — evidence: <fill>
-- [ ] AC5 — maker-first entry with fallback and exchange SL/TP/trailing verified on the real exchange — evidence: <fill>
-- [ ] AC6 — both paper arms (signal-only, committee) deployed and running with no errors, visible on the dashboard; window counts per D5 tracked — evidence: <fill>
-- [ ] AC7 — dashboard "Hội đồng AI" tab shows debates (browser QA desktop + mobile) — evidence: <fill>
-- [ ] AC8 — docs/hub updated, hub-lint 0 errors — evidence: <fill>
-- [ ] AC9 — all verify commands are green — evidence: <fill>
+- [x] AC0 — backtest harness reports fee-inclusive results for ≥ 3 signal candidates; edge gate documented — evidence: `python -m trader.backtest` 720 d, 4 signals × 4h/1h, fees incl.: 4h pullback +0.127R (1883 trades, halves +0.149/+0.109) passes EDGE_GATE on 30 alts; fails on 12 (+0.088); 1h no edge. ATR%-capped (tradable at 18.7 USDT) pullback: +0.119R overall but 2nd half +0.046R
+- [x] AC1 — signal engine scans the alt universe every 15 min and logs setups; derivatives data stored (tests + live dry scan) — evidence: live: paper arms logged v2_scan + 2 pullback setups (BLESS, LISTA) at 15:31 ICT; deriv table 30 rows; signals.derivs(SOL) on server → funding 6.25e-05, ls 3.54, taker 0.52; tests test_signals.py
+- [x] AC2 — committee: 3 analysts + bull/bear + lead produce a typed decision; transcript stored as `debate` event — evidence: real run on server `python -m trader.committee SOL/USDT:USDT` → 6 calls, lead JSON skip; live committee arm stored 2 `debate` events; test_committee.py 9 tests
+- [x] AC3 — sizing from bot value, total-open-risk cap, liq distance, min-notional reject, 2% cap until edge gate, reconcile-after-TP1 and stop replacement enforced with tests — evidence: test_risk_v2.py + test_v2.py (45 tests) incl. reconcile-after-TP1, stop replace-before-cancel, min-notional reject, 2%→3% gate; live arm rejected BLESS/LISTA with `notional 1.75 < min notional 5.0` (not rounded up)
+- [x] AC4 — LLM daily cost cap enforced; average committee cost per run measured — evidence: Budget cap LLM_DAILY_USD=0.10 tested (skip without any chat call); measured real cost $0.00059/run (SOL demo), $0.0007/run live (dashboard llm_today 0.0014 for 2 runs); PR #11 skips committee when unsizable
+- [x] AC5 — maker-first entry with fallback and exchange SL/TP/trailing verified on the real exchange — evidence: DOGE live (6.5 USDT, 3x isolated): post-only GTX rested 20 s then market fallback {'qty':111,'maker':False}; STOP_MARKET 111 + TAKE_PROFIT_MARKET 55 on exchange; move_stop placed new stop 0.05742 then cancelled old; close → 0 positions, 0 triggers. Bug found+fixed: algo orders carry info.orderType (stop_cover was 0). Maker fill itself not observed
+- [x] AC6 — both paper arms (signal-only, committee) deployed and running with no errors, visible on the dashboard; window counts per D5 tracked — evidence: server: trading-bot-paper-signal-1 / paper-committee-1 Up, 0 error/traceback lines in logs; /api/arms shows both arms, edge_gate 0/30; live container untouched (old image, Up)
+- [x] AC7 — dashboard "Hội đồng AI" tab shows debates (browser QA desktop + mobile) — evidence: Docker Chromium on https://trade.brandondev.online #v2 and #committee at 1440 px and 390 px: KPI cards, comparison chart, debate cards with 3 analysts + bull/bear + lead; 0 overflow; mobile nav active tab visible after PR #14; anon/forged cookie → 401, bad arm → 400
+- [x] AC8 — docs/hub updated, hub-lint 0 errors — evidence: docs/hub env/features/changelog/decisions(D12)/infra updated; `hub-lint .` → 0 error(s)
+- [x] AC9 — all verify commands are green — evidence: `cd bot && uv run pytest -q` → 114 passed; `node --check bot/trader/static/app.js` ok
+
+## Findings after deploy (2026-11-27)
+
+- At 18.7 USDT and 2% risk the max stop for a 5 USDT min notional is ~7.5% of price. High-volatility alts (4h ATR ~10%) cannot be traded; the first two live setups were rejected for that. Their share of the backtest edge is large: ATR% ≤ 3.5% pullback keeps +0.119R overall but only +0.046R in the second half.
+- Consequence: the paper arms will take fewer trades than the backtest and the tradable edge is weaker than the headline +0.127R. The 30-trade gate (D5) decides; no live switch before it.
+- Fixed during QA: committee ran on unsizable setups (PR #11); derivatives/Fear&Greed not passed to the committee (PR #12); mobile nav hid the open tab (PR #13, #14); algo-order type detection (in PR #10).
 
 ## Files
 | File | Change | churn/90d |
