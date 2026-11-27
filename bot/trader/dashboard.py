@@ -1,13 +1,17 @@
 """Read-only status page over the bot databases: python -m trader.dashboard  (port 8080, DASH_DBS=/data/live.db,...)
 
-Public behind Caddy (trade.brandondev.online): HTTP Basic auth with DASH_USER / DASH_PASSWORD is mandatory.
+Public behind Caddy (trade.brandondev.online): login form with DASH_USER / DASH_PASSWORD, then a signed
+HttpOnly session cookie (7 days). /health is the only public path.
 """
-import base64
 import glob
+import hashlib
 import hmac
 import html
 import os
+import threading
 import time
+from http.cookies import SimpleCookie
+from urllib.parse import parse_qs
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 from .main import halted
@@ -74,41 +78,112 @@ def page() -> str:
 .kpis div{{background:#111a2e;padding:12px;border-radius:8px}}.kpis b{{display:block;font-size:20px}}
 .kpis span,.muted{{color:#94a3b8;font-size:12px}}.warn{{color:#fbbf24}}
 table{{border-collapse:collapse;width:100%}}td,th{{border-bottom:1px solid #1f2a44;padding:4px 8px;text-align:left;vertical-align:top}}
-th{{color:#94a3b8;font-weight:500}}</style><h1>trading-bot</h1><p class=muted>times UTC+7 · refreshes every 60 s</p>{body}"""
+th{{color:#94a3b8;font-weight:500}}.out{{float:right}}.out button{{font:inherit;background:#1f2a44;color:#e5e7eb;border:0;padding:6px 12px;border-radius:6px;cursor:pointer}}</style>
+<form class=out method=post action=/logout><button>Sign out</button></form><h1>trading-bot</h1><p class=muted>times UTC+7 · refreshes every 60 s</p>{body}"""
 
 
-def authorized(header: str | None) -> bool:
-    user, pw = os.getenv("DASH_USER", ""), os.getenv("DASH_PASSWORD", "")
-    if not (user and pw and header and header.startswith("Basic ")):
+SESSION_S = 7 * 24 * 3600
+_fail_lock = threading.Lock()   # failed logins are serialized with a 1 s delay: ~1 guess/s at most
+
+
+def _key() -> bytes:
+    # changing DASH_PASSWORD invalidates every session
+    return hmac.new(os.getenv("DASH_PASSWORD", "").encode(), b"session", hashlib.sha256).digest()
+
+
+def credentials_ok(user: str, pw: str) -> bool:
+    u, p = os.getenv("DASH_USER", ""), os.getenv("DASH_PASSWORD", "")
+    if not (u and p):
         return False
+    return hmac.compare_digest(f"{user}:{pw}".encode(), f"{u}:{p}".encode())
+
+
+def make_session(now: float | None = None) -> str:
+    exp = str(int((now or time.time()) + SESSION_S))
+    return exp + "." + hmac.new(_key(), exp.encode(), hashlib.sha256).hexdigest()
+
+
+def session_ok(cookie_header: str | None, now: float | None = None) -> bool:
+    if not (cookie_header and os.getenv("DASH_PASSWORD")):
+        return False
+    c = SimpleCookie()
     try:
-        given = base64.b64decode(header[6:], validate=True)
-    except ValueError:
+        c.load(cookie_header)
+    except Exception:
         return False
-    return hmac.compare_digest(given, f"{user}:{pw}".encode())
+    v = c["s"].value if "s" in c else ""
+    exp, _, sig = v.partition(".")
+    if not exp.isdigit() or int(exp) < (now or time.time()):
+        return False
+    return hmac.compare_digest(sig, hmac.new(_key(), exp.encode(), hashlib.sha256).hexdigest())
+
+
+def login_page(error: str = "") -> str:
+    msg = f"<p class=err>{e(error)}</p>" if error else ""
+    return f"""<!doctype html><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1">
+<title>trading-bot · login</title><style>body{{font:15px system-ui;background:#0b1220;color:#e5e7eb;display:grid;place-items:center;min-height:100vh;margin:0}}
+form{{background:#111a2e;padding:28px;border-radius:12px;width:min(320px,88vw);display:grid;gap:12px}}
+h1{{margin:0 0 4px;font-size:20px}}label{{display:grid;gap:4px;font-size:13px;color:#94a3b8}}
+input{{font:inherit;padding:10px;border-radius:8px;border:1px solid #1f2a44;background:#0b1220;color:#e5e7eb}}
+button{{font:inherit;padding:10px;border:0;border-radius:8px;background:#3b82f6;color:#fff;cursor:pointer}}
+.err{{color:#f87171;margin:0;font-size:13px}}</style>
+<form method=post action=/login><h1>trading-bot</h1>{msg}
+<label>User<input name=user autocomplete=username required autofocus></label>
+<label>Password<input name=password type=password autocomplete=current-password required></label>
+<button type=submit>Sign in</button></form>"""
+
+
+CSP = "default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; frame-ancestors 'none'"
 
 
 class Handler(BaseHTTPRequestHandler):
-    def do_GET(self):
-        if self.path == "/health":   # public liveness probe, no data
-            self.send_response(200)
-            self.end_headers()
-            self.wfile.write(b"ok")
-            return
-        if not authorized(self.headers.get("Authorization")):
-            self.send_response(401)
-            self.send_header("WWW-Authenticate", 'Basic realm="trading-bot"')
-            self.end_headers()
-            return
-        if self.path != "/":
-            self.send_error(404)
-            return
-        out = page().encode()
-        self.send_response(200)
+    def _send(self, code: int, body: str = "", headers: dict | None = None):
+        out = body.encode()
+        self.send_response(code)
         self.send_header("Content-Type", "text/html; charset=utf-8")
-        self.send_header("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'")
+        self.send_header("Content-Security-Policy", CSP)
+        self.send_header("X-Content-Type-Options", "nosniff")
+        self.send_header("Cache-Control", "no-store")
+        for k, v in (headers or {}).items():
+            self.send_header(k, v)
+        self.send_header("Content-Length", str(len(out)))
         self.end_headers()
         self.wfile.write(out)
+
+    def _cookie(self, value: str, max_age: int) -> str:
+        secure = "" if os.getenv("DASH_INSECURE_COOKIE") == "1" else "; Secure"   # tests run on plain http
+        return f"s={value}; Path=/; Max-Age={max_age}; HttpOnly; SameSite=Strict{secure}"
+
+    def do_GET(self):
+        path = self.path.split("?")[0]
+        if path == "/health":   # public liveness probe, no data
+            return self._send(200, "ok")
+        if path == "/login":
+            return self._send(200, login_page())
+        if path != "/":
+            return self._send(404, "not found")
+        if not session_ok(self.headers.get("Cookie")):
+            return self._send(303, "", {"Location": "/login"})
+        self._send(200, page())
+
+    def do_POST(self):
+        path = self.path.split("?")[0]
+        origin = self.headers.get("Origin")
+        if origin and origin.split("://")[-1] != self.headers.get("Host"):   # cross-site form post
+            return self._send(403, "forbidden")
+        if path == "/logout":
+            return self._send(303, "", {"Location": "/login", "Set-Cookie": self._cookie("", 0)})
+        if path != "/login":
+            return self._send(404, "not found")
+        n = int(self.headers.get("Content-Length") or 0)
+        if n > 4096:
+            return self._send(413, "too large")
+        form = parse_qs(self.rfile.read(n).decode(errors="replace"))
+        if credentials_ok(form.get("user", [""])[0], form.get("password", [""])[0]):
+            return self._send(303, "", {"Location": "/", "Set-Cookie": self._cookie(make_session(), SESSION_S)})
+        with _fail_lock:
+            time.sleep(1)
+        self._send(401, login_page("Wrong user or password"))
 
     def log_message(self, *a):
         pass

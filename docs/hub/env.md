@@ -18,7 +18,7 @@ verified_commit: 1728129
 | OPENROUTER_MODEL | model OpenRouter | bot | no |
 | OPENROUTER_PRICE_IN | USD / 1M token vào | bot | no |
 | OPENROUTER_PRICE_OUT | USD / 1M token ra | bot | no |
-| DISCORD_WEBHOOK_URL | báo động Discord | bot | yes |
+| DISCORD_WEBHOOK_URL | báo động Discord, kênh #trading-bot (BrandonTa Lab) | bot | yes |
 | DASH_USER | user dashboard | dashboard | no |
 | DASH_PASSWORD | mật khẩu dashboard | dashboard | yes |
 | LEVERAGE | đòn bẩy, tối đa 5 | bot | no |

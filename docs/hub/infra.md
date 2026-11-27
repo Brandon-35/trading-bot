@@ -8,7 +8,7 @@ verified_commit: 1728129
 |---|---|---|---|
 | Stack | server-brandon-service (5.189.155.78) | /opt/services/trading-bot | rsync từ repo `bot/`, docker compose |
 | live bot | container trading-bot-live-1 | - | profile `live`, MODE=live, DB /data/live.db |
-| dashboard | container trading-bot-dashboard-1 | 127.0.0.1:8090, edge :8080 | Basic auth trong app |
+| dashboard | container trading-bot-dashboard-1 | 127.0.0.1:8090, edge :8080 | trang đăng nhập + cookie phiên ký HMAC (7 ngày) |
 | Volume | docker volume trading-bot_data | /data | SQLite mỗi bot |
 | Edge | Caddy `/opt/edge/caddy-sites/trading-bot.caddy` | trade.brandondev.online | repo server-services |
 | SNI | /opt/stalwart-mail/proxy/nginx.conf | :443 → 127.0.0.1:8444 | repo stalwart-mail |
@@ -29,4 +29,4 @@ git checkout <previous-sha> -- bot && rsync -az --delete --exclude .venv --exclu
 Dừng bot không đóng vị thế: SL/TP vẫn nằm trên sàn.
 
 ## Health
-https://trade.brandondev.online (401 khi chưa đăng nhập = đang chạy)
+https://trade.brandondev.online/health → 200 `ok` = đang chạy; `/` chuyển tới `/login` khi chưa đăng nhập

@@ -33,7 +33,7 @@ kind: user
 node: owner | Owner | actor
 node: disc | Discord | external | báo lệnh, lỗi, tổng kết 8:00
 node: dash | Dashboard | step | trade.brandondev.online
-node: auth | Đúng mật khẩu? | decision | Basic auth
+node: auth | Đúng mật khẩu? | decision | form /login, cookie phiên HttpOnly
 node: page | Vốn, lệnh, lý do LLM | step
 node: clear | --clear-halt | step | sau khi dừng hẳn
 edge: owner -> disc | nhận báo động
