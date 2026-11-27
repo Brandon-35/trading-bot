@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Bot Giao Dịch · Bảng điều khiển</title>
+<link rel="icon" href="/static/logo.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/static/logo-180.png">
+<link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+<header class="top">
+  <a class="logo" href="#overview"><img src="/static/logo.svg" alt="" width="28" height="28"><span class="nm">Bot Giao Dịch<small>Binance Futures · AI</small></span></a>
+  <nav class="tabs" id="tabs">
+    <a href="#overview" data-tab="overview">Tổng quan</a>
+    <a href="#positions" data-tab="positions">Vị thế<b id="posCount" class="cnt" hidden></b></a>
+    <a href="#history" data-tab="history">Lịch sử lệnh</a>
+    <a href="#decisions" data-tab="decisions">Quyết định AI</a>
+    <a href="#account" data-tab="account">Tài khoản</a>
+  </nav>
+  <div class="right">
+    <span class="live" id="live"><i></i><span id="liveTxt">TRỰC TIẾP</span></span>
+    <form method="post" action="/logout"><button type="submit" class="btn">Đăng xuất</button></form>
+  </div>
+</header>
+<main id="main">
+  <section id="tab-overview" class="tab"></section>
+  <section id="tab-positions" class="tab"></section>
+  <section id="tab-history" class="tab"></section>
+  <section id="tab-decisions" class="tab"></section>
+  <section id="tab-account" class="tab"></section>
+</main>
+<script src="/static/lightweight-charts.js"></script>
+<script src="/static/app.js"></script>
+</body>
+</html>

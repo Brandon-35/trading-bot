@@ -1,5 +1,6 @@
 """Bot decisions against a fake broker: bad LLM output must never reach the exchange."""
 import os
+import time
 
 os.environ.setdefault("LLM_MODEL", "x")
 os.environ.setdefault("LLM_BASE_URL", "http://localhost")
@@ -70,8 +71,42 @@ def test_reconcile_closes_unprotected_and_cancels_orphans(tmp_path, monkeypatch)
     monkeypatch.setattr(m, "SYMBOLS", [S, "ETH/USDT:USDT"])
     b = FakeBroker({S: {"side": "long", "qty": 0.002, "entry": 60_000}}, protective=1)
     b.protective_count = lambda s: 1                    # S has only its TP; ETH has an orphan order
-    bot(b, tmp_path, mode="demo").reconcile(b.positions())
+    x = bot(b, tmp_path, mode="demo")
+    seed_fill(x.store.db, S, "buy", 0.002)
+    x.reconcile(b.positions())
     assert ("close", S) in b.calls and ("cancel", "ETH/USDT:USDT") in b.calls
+
+
+def seed_fill(db, sym, side, qty, bot_fill=True, t=None, i=[0]):
+    i[0] += 1
+    db.execute("INSERT INTO fills VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+               (i[0], sym, i[0], "x-cvBPrNm9a" if bot_fill else "web_1", "MARKET", side, 60_000, qty, 0, -0.01,
+                t or int(time.time() * 1000), int(bot_fill)))
+
+
+def test_hand_position_is_never_closed_or_cancelled(tmp_path, monkeypatch):
+    monkeypatch.setattr(m, "SYMBOLS", [S])
+    b = FakeBroker({S: {"side": "long", "qty": 0.002, "entry": 60_000}})
+    b.protective_count = lambda s: 0                    # hand trade, no stops
+    x = bot(b, tmp_path, mode="demo")
+    seed_fill(x.store.db, S, "buy", 0.002, bot_fill=False)
+    x.reconcile(b.positions())
+    assert not b.calls
+    assert "manual position" in x.act(d(), x.mine(b.positions()), REF, 100.0, None)
+
+
+def test_floor_closes_only_bot_positions(tmp_path, monkeypatch):
+    E = "ETH/USDT:USDT"
+    monkeypatch.setattr(m, "SYMBOLS", [S, E])
+    monkeypatch.setattr(m, "snapshot", lambda *a: ({}, REF))
+    pos = {S: {"side": "long", "qty": 0.002, "entry": 1}, E: {"side": "long", "qty": 0.5, "entry": 1}}
+    b = FakeBroker(pos)
+    b.equity = lambda: 10.0
+    x = bot(b, tmp_path, mode="demo")
+    seed_fill(x.store.db, S, "buy", 0.002)
+    seed_fill(x.store.db, E, "buy", 0.5, bot_fill=False)
+    x.cycle()
+    assert b.calls == [("close", S)]
 
 
 def test_halt_persists_until_cleared(tmp_path):
