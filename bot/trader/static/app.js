@@ -528,7 +528,7 @@ function route() {
   TABS.forEach((n) => { $('#tab-' + n).classList.toggle('on', n === t); });
   document.querySelectorAll('#tabs a').forEach((a) => a.classList.toggle('on', a.dataset.tab === t));
   const on = document.querySelector('#tabs a.on');   // mobile nav scrolls sideways: keep the open tab visible
-  if (on) on.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+  if (on) requestAnimationFrame(() => on.scrollIntoView({ block: 'nearest', inline: 'nearest' }));
   loaders[t]().catch((e) => { if (e.message !== 'auth') console.error(e); });
 }
 window.addEventListener('hashchange', route);
