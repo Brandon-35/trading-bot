@@ -1,7 +1,7 @@
 ---
 section: features
 updated: 2026-11-27
-verified_commit: f673cf5
+verified_commit: 187fbeb
 ---
 
 | Surface | Feature | Status | Since |
