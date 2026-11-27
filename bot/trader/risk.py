@@ -78,3 +78,96 @@ def halt_reason(equity: float, day_start_equity: float, limits: Limits) -> str |
     if day_start_equity > 0 and (day_start_equity - equity) / day_start_equity >= limits.daily_stop_pct:
         return "daily"
     return None
+
+
+# ---- v2 (paper arms first; live needs the owner's separate go) -------------------------------------------------
+
+@dataclass(frozen=True)
+class V2Limits:
+    risk_pct: float = 0.02           # hard cap until the edge gate passes
+    risk_pct_proven: float = 0.03    # after >= edge_min_trades closed trades with avg net R >= edge_min_avg_r
+    edge_min_trades: int = 30
+    edge_min_avg_r: float = 0.10
+    max_total_risk: float = 0.10     # sum of open (qty * stop distance) / base, incl. the new trade
+    max_positions: int = 3
+    max_same_side: int = 2
+    max_entries_day: int = 6
+    daily_stop_pct: float = 0.12
+    floor_equity: float = 12.0
+    max_leverage: int = 10
+    maint_margin: float = 0.005      # rough maintenance margin rate used for the liquidation estimate
+    liq_mult: float = 2.0            # liquidation must be >= liq_mult * stop distance away
+    min_notional: float = 5.0        # never below this, even when the market says less
+    sl_min_pct: float = 0.008        # a stop closer than this loses too much to fees (same floor as v1)
+
+    def __post_init__(self):
+        if not 0 < self.risk_pct <= 0.02:
+            raise ValueError("risk_pct must be in (0, 0.02]")
+        if not self.risk_pct <= self.risk_pct_proven <= 0.03:
+            raise ValueError("risk_pct_proven must be in [risk_pct, 0.03]")
+        if not 1 <= self.max_leverage <= 10:
+            raise ValueError("max_leverage must be in [1, 10]")
+
+
+def floor_step(x: float, step: float) -> float:
+    return float((Decimal(str(x)) / Decimal(str(step))).to_integral_value(ROUND_DOWN) * Decimal(str(step)))
+
+
+def edge_proven(rs: list[float], lim: V2Limits) -> bool:
+    return len(rs) >= lim.edge_min_trades and sum(rs) / len(rs) >= lim.edge_min_avg_r
+
+
+def risk_pct(rs: list[float], lim: V2Limits) -> float:
+    """rs = this arm's closed-trade net R, oldest first. 2 % until the edge gate passes; halved while the
+    last two trades were both losses (a win restores it)."""
+    pct = lim.risk_pct_proven if edge_proven(rs, lim) else lim.risk_pct
+    return pct / 2 if len(rs) >= 2 and rs[-1] < 0 and rs[-2] < 0 else pct
+
+
+def size_v2(base: float, rpct: float, stop_dist: float, price: float, step: float, min_qty: float,
+            min_notional: float, lim: V2Limits) -> tuple[float, str | None]:
+    """Quantity that loses rpct of base at the stop, rounded DOWN; too small is rejected, never rounded up."""
+    if not all(math.isfinite(v) and v > 0 for v in (base, rpct, stop_dist, price, step)):
+        return 0.0, "bad sizing input"
+    qty = floor_step(base * rpct / stop_dist, step)
+    if qty < max(min_qty, step):
+        return 0.0, f"qty {qty} < min qty {max(min_qty, step)}"
+    need = max(min_notional, lim.min_notional)
+    if qty * price < need:
+        return 0.0, f"notional {qty * price:.2f} < min notional {need}"
+    return qty, None
+
+
+def open_risk(side: str, qty: float, entry: float, stop: float) -> float:
+    """USDT lost if the stop hits; a stop already beyond breakeven risks nothing."""
+    return max(0.0, (entry - stop if side == "long" else stop - entry) * qty)
+
+
+def check_caps(positions: list[dict], side: str, new_risk: float, entries_today: int, base: float,
+               lim: V2Limits) -> str | None:
+    """positions: [{side, risk}] of the bot's open positions (without the new one)."""
+    if len(positions) >= lim.max_positions:
+        return "max positions reached"
+    if sum(p["side"] == side for p in positions) >= lim.max_same_side:
+        return f"max {lim.max_same_side} {side} positions"
+    if entries_today >= lim.max_entries_day:
+        return "max entries per day reached"
+    total = sum(p["risk"] for p in positions) + new_risk
+    if total > lim.max_total_risk * base + 1e-9:
+        return f"total open risk {total:.2f} > {lim.max_total_risk:.0%} of base"
+    return None
+
+
+def pick_leverage(notional: float, margin_avail: float, entry: float, stop_dist: float,
+                  lim: V2Limits) -> tuple[int | None, str | None]:
+    """Smallest integer leverage whose margin fits (5 % fee buffer) and whose estimated liquidation
+    (entry * (1/L - maintenance rate)) is >= liq_mult * stop distance away; None + reason if there is none."""
+    if margin_avail <= 0:
+        return None, "no free margin"
+    for lev in range(1, lim.max_leverage + 1):
+        if notional / lev > 0.95 * margin_avail:
+            continue
+        if entry * (1 / lev - lim.maint_margin) >= lim.liq_mult * stop_dist:
+            return lev, None
+        return None, f"liquidation too close at {lev}x (need >= {lim.liq_mult}x the stop distance)"
+    return None, f"notional {notional:.2f} needs more than {lim.max_leverage}x for {margin_avail:.2f} margin"

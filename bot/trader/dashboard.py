@@ -18,7 +18,7 @@ from http.cookies import SimpleCookie
 from urllib.parse import parse_qs, urlparse
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-from . import sync
+from . import risk, sync
 
 e = lambda v: html.escape(str(v))   # every value may come from an LLM or a news feed
 STATIC = os.path.join(os.path.dirname(__file__), "static")
@@ -236,6 +236,121 @@ def api_account(db) -> dict:
 
 
 
+# ---------- v2 paper arms (own SQLite each, event log from trader.store) ----------
+ARM_LABEL = {"signal": "Chỉ tín hiệu", "committee": "Hội đồng AI"}
+
+
+def _arm_paths() -> dict:
+    raw = os.getenv("ARM_DBS", "signal=/data/paper_signal.db,committee=/data/paper_committee.db")
+    return dict(x.split("=", 1) for x in raw.split(",") if "=" in x)
+
+
+def _arm_db(arm: str):
+    """Read-only handle on an arm DB; None when the file or its events table is missing."""
+    path = _arm_paths().get(arm)
+    if not path or not os.path.exists(path):
+        return None
+    try:
+        db = sqlite3.connect(f"file:{path}?mode=ro", uri=True, timeout=5)
+        db.execute("SELECT 1 FROM events LIMIT 1")
+        return db
+    except sqlite3.Error:
+        return None
+
+
+def _ev(db, kind: str, desc: bool = False, limit: int = -1) -> list:
+    if not db:
+        return []
+    q = f"SELECT ts, data FROM events WHERE kind=? ORDER BY rowid {'DESC' if desc else ''} LIMIT ?"
+    return [(ts, json.loads(d)) for ts, d in db.execute(q, (kind, limit))]
+
+
+def _closed(db) -> list:
+    """trade_close events as trade rows, oldest first; open_time comes from the matching trade_open."""
+    opens: dict = {}
+    for ts, d in _ev(db, "trade_open"):
+        opens.setdefault(d.get("symbol"), []).append(ts)
+    out = []
+    for ts, d in _ev(db, "trade_close"):
+        net, fees, fund = d.get("pnl") or 0.0, d.get("fees") or 0.0, d.get("funding") or 0.0
+        o = [t for t in opens.get(d.get("symbol"), []) if t <= ts]
+        out.append({"symbol": d.get("symbol"), "side": d.get("side"), "qty": d.get("qty"), "entry": d.get("entry"),
+                    "exit": d.get("exit"), "open_time": o[-1] if o else None, "close_time": ts,
+                    "pnl": net + fees - fund, "fees": fees, "net": net, "r": d.get("r"), "why": d.get("why")})
+    return out
+
+
+def api_arm_trades(arm: str) -> list:
+    db = _arm_db(arm)
+    try:
+        return _closed(db)[::-1]
+    finally:
+        if db:
+            db.close()
+
+
+def _arm_summary(arm: str) -> dict:
+    start = float(os.getenv("PAPER_START", "18.7392"))
+    db = _arm_db(arm)
+    try:
+        tr = _closed(db)
+        rs = [t["r"] for t in tr if t["r"] is not None]
+        lim = risk.V2Limits(risk_pct=float(os.getenv("RISK_PCT", "0.02")),
+                            risk_pct_proven=float(os.getenv("RISK_PCT_PROVEN", "0.03")))
+        net = sum(t["net"] for t in tr)
+        curve, eq, peak, dd = [[tr[0]["close_time"] if tr else int(time.time()), start]], start, start, 0.0
+        for t in tr:
+            eq += t["net"]
+            curve.append([t["close_time"], eq])
+            peak = max(peak, eq)
+            dd = max(dd, (peak - eq) / peak * 100)
+        last_eq = _ev(db, "equity", True, 1)
+        equity = last_eq[0][1].get("equity") if last_eq and last_eq[0][1].get("equity") is not None else start + net
+        ps = _ev(db, "paper_state", True, 1)
+        pos = ps[0][1].get("pos", {}) if ps else {}
+        scan = _ev(db, "v2_scan", True, 1)
+        setups = db.execute("SELECT COUNT(*) FROM events WHERE kind='setup' AND ts>=?", (scan[0][0],)).fetchone()[0] if scan else 0
+        midnight = int(time.time()) // 86400 * 86400
+        costs = [(ts, d.get("usd") or 0.0) for ts, d in _ev(db, "llm_cost")]
+        wins = sum(t["net"] > 0 for t in tr)
+        return {"name": arm, "label_vi": ARM_LABEL[arm], "start": start, "equity": equity, "pnl": equity - start,
+                "pnl_pct": (equity - start) / start * 100, "trades": len(tr), "wins": wins,
+                "win_rate": wins / len(tr) * 100 if tr else 0, "avg_r": sum(rs) / len(rs) if rs else 0,
+                "net": net, "fees": sum(t["fees"] for t in tr), "max_dd_pct": dd, "risk_pct": risk.risk_pct(rs, lim) * 100,
+                "edge_gate": {"trades_needed": lim.edge_min_trades, "trades": len(rs),
+                              "avg_r": sum(rs) / len(rs) if rs else 0, "passed": risk.edge_proven(rs, lim)},
+                "open": [{"symbol": s, "side": p.get("side"), "qty": p.get("qty"), "entry": p.get("entry"),
+                          "stop": p.get("sl"), "tp": p.get("tp"), "mark": None} for s, p in pos.items()],
+                "curve": curve,
+                "last_scan": {"time": scan[0][0], "setups": setups, "universe": None} if scan else None,
+                "llm_today": sum(u for ts, u in costs if ts >= midnight), "llm_total": sum(u for _, u in costs)}
+    finally:
+        if db:
+            db.close()
+
+
+def api_arms() -> dict:
+    return {"arms": [_arm_summary(a) for a in ARM_LABEL]}
+
+
+def api_debates(limit: int) -> list:
+    db = _arm_db("committee")
+    try:
+        setups = _ev(db, "setup", True, 2000)
+        out = []
+        for ts, d in _ev(db, "debate", True, limit):
+            tr = d.get("transcript") or {}
+            sig = next((s.get("signal") for t, s in setups if t <= ts and s.get("symbol") == d.get("symbol")), None)
+            out.append({"time": ts, "symbol": d.get("symbol"), "side": d.get("side"), "signal": sig,
+                        "action": d.get("action"), "confidence": d.get("confidence"), "sl_atr": d.get("sl_atr"),
+                        "tp_r": d.get("tp_r"), "rationale": d.get("rationale"), "cost": d.get("cost"),
+                        "analysts": tr.get("analysts") or {}, "bull": tr.get("bull"), "bear": tr.get("bear")})
+        return out
+    finally:
+        if db:
+            db.close()
+
+
 class Handler(BaseHTTPRequestHandler):
     def _send(self, code: int, body: str = "", headers: dict | None = None):
         out = body.encode()
@@ -301,6 +416,14 @@ class Handler(BaseHTTPRequestHandler):
                 sym, tf = q.get("symbol", [""])[0], q.get("tf", [""])[0]
                 if sym not in SYMBOLS or tf not in TFS:
                     return self._json(400, {"error": "bad symbol or tf"})
+            if path == "/api/arms":
+                return self._json(200, api_arms())
+            if path == "/api/arm_trades":
+                arm = q.get("arm", [""])[0]
+                return self._json(200, api_arm_trades(arm)) if arm in ARM_LABEL else self._json(400, {"error": "bad arm"})
+            if path == "/api/debates":
+                lim = q.get("limit", ["50"])[0]
+                return self._json(200, api_debates(min(int(lim), 500) if lim.isdigit() and int(lim) > 0 else 50))
             db = _db()
             if path == "/api/summary":
                 return self._json(200, api_summary(db))

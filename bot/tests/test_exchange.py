@@ -118,3 +118,11 @@ def test_limits_refuse_values_above_plan():
         Limits(risk_pct=0.05)
     with pytest.raises(ValueError):
         Limits(leverage=10)
+
+
+def test_kind_reads_algo_order_type():
+    # Binance algo (conditional) orders come back from ccxt with type "market" and info.orderType (seen live 2026-11-27)
+    from trader.exchange import Binance
+    assert Binance._kind({"type": "market", "info": {"orderType": "STOP_MARKET"}}) == "STOP_MARKET"
+    assert Binance._kind({"type": "market", "info": {"orderType": "TAKE_PROFIT_MARKET"}}).startswith("TAKE")
+    assert Binance._kind({"type": "limit", "info": {"origType": "STOP"}}) == "STOP"

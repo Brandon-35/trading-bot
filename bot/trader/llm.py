@@ -5,7 +5,7 @@ import time
 from pathlib import Path
 from typing import Literal
 
-from openai import OpenAI
+from openai import APIConnectionError, APITimeoutError, InternalServerError, OpenAI
 from pydantic import BaseModel, Field, ValidationError
 
 PROMPT = (Path(__file__).parent.parent / "prompts" / "system.md").read_text()
@@ -95,6 +95,36 @@ class LLM:
                 print(f"provider error detail: {e}")
         meta.setdefault("ms", int((time.time() - t0) * 1000))
         return [], meta
+
+
+# USD per 1M tokens (in, out): fallback when OpenRouter does not return usage.cost
+PRICES = {"deepseek/deepseek-v3.2": (0.26, 0.38), "qwen/qwen3-235b-a22b-2507": (0.14, 0.80),
+          "google/gemini-2.5-flash-lite": (0.10, 0.40)}
+
+
+def _client() -> OpenAI:
+    return OpenAI(base_url="https://openrouter.ai/api/v1", api_key=os.environ["OPENROUTER_API_KEY"],
+                  timeout=60, max_retries=0)
+
+
+def chat(model: str, messages: list[dict], max_tokens=600, temperature=0.3, json_mode=True) -> tuple[str, float]:
+    """One OpenRouter call -> (content, cost_usd). One retry on 5xx/timeout; raises on failure."""
+    kw = {"response_format": {"type": "json_object"}} if json_mode else {}
+    for attempt in (0, 1):
+        try:
+            r = _client().chat.completions.create(
+                model=model, messages=messages, max_tokens=max_tokens, temperature=temperature,
+                extra_body={"usage": {"include": True}}, **kw)
+            break
+        except (APITimeoutError, APIConnectionError, InternalServerError):
+            if attempt:
+                raise
+    u = r.usage
+    cost = getattr(u, "cost", None) if u else None
+    if cost is None and u:
+        pin, pout = PRICES.get(model, (0.0, 0.0))
+        cost = (u.prompt_tokens * pin + u.completion_tokens * pout) / 1e6
+    return r.choices[0].message.content or "", float(cost or 0.0)
 
 
 def _strip_fence(text: str) -> str:
