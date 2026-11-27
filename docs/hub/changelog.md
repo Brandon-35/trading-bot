@@ -1,10 +1,11 @@
 ---
 section: changelog
 updated: 2026-11-27
-verified_commit: 6fbd250
+verified_commit: f673cf5
 ---
 
 ## 0.1.0 — 2026-11-27
+- Dashboard trên điện thoại: thanh tab dưới đáy, sheet "Thêm", bảng thành thẻ, nút ≥ 44px. Tab "Hệ thống" nhúng báo cáo hệ thống (nguồn `bot/trader/static/report.html`). Nút USDT | VND, tỉ giá trung vị P2P mua/bán của Binance, cache 10 phút. Số định dạng vi-VN.
 - Bot LLM Binance USDⓈ-M: risk engine, broker Binance + paper, tin tức RSS, Discord, tự chọn LLM, OpenRouter.
 - Dashboard đọc-only có Basic auth.
 - Dashboard: trang đăng nhập thay Basic auth (cookie HttpOnly, SameSite=Strict, Secure, 7 ngày; sai mật khẩu chờ 1 s; chặn POST khác origin). Cảnh báo Discord vào kênh #trading-bot của BrandonTa Lab.

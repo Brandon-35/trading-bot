@@ -12,11 +12,14 @@ import json
 import mimetypes
 import re
 import sqlite3
+import statistics
 import threading
 import time
 from http.cookies import SimpleCookie
 from urllib.parse import parse_qs, urlparse
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+
+import httpx
 
 from . import risk, sync
 
@@ -236,6 +239,39 @@ def api_account(db) -> dict:
 
 
 
+# ---------- USDT/VND rate from Binance P2P ----------
+P2P_URL = "https://p2p.binance.com/bapi/c2c/v2/friendly/c2c/adv/search"
+FX_TTL, FX_RETRY = 600, 60   # fresh for 10 min; after a failure do not hit P2P again for 1 min
+_fx: dict = {"v": None, "fail": 0.0}
+_fx_lock = threading.Lock()   # one fetch at a time: concurrent requests wait instead of stampeding
+
+
+def _p2p_prices(trade_type: str) -> list[float]:
+    r = httpx.post(P2P_URL, timeout=10, json={"asset": "USDT", "fiat": "VND", "tradeType": trade_type, "page": 1,
+                                              "rows": 10, "payTypes": [], "publisherType": None})
+    r.raise_for_status()
+    return [float(a["adv"]["price"]) for a in r.json()["data"]]
+
+
+def api_fx(now: float | None = None) -> dict:
+    """Cached rate; raises only when no rate was ever fetched."""
+    now = now or time.time()
+    with _fx_lock:
+        v = _fx["v"]
+        if v and now - v["time"] < FX_TTL:
+            return {**v, "stale": False}
+        if not (v and now - _fx["fail"] < FX_RETRY):
+            try:
+                buy, sell = (statistics.median(_p2p_prices(t)) for t in ("BUY", "SELL"))
+                v = _fx["v"] = {"usdt_vnd": (buy + sell) / 2, "buy": buy, "sell": sell, "source": "Binance P2P", "time": int(now)}
+                return {**v, "stale": False}
+            except Exception:
+                _fx["fail"] = now
+        if v:
+            return {**v, "stale": True}
+        raise RuntimeError("fx unavailable")
+
+
 # ---------- v2 paper arms (own SQLite each, event log from trader.store) ----------
 ARM_LABEL = {"signal": "Chỉ tín hiệu", "committee": "Hội đồng AI"}
 
@@ -416,6 +452,11 @@ class Handler(BaseHTTPRequestHandler):
                 sym, tf = q.get("symbol", [""])[0], q.get("tf", [""])[0]
                 if sym not in SYMBOLS or tf not in TFS:
                     return self._json(400, {"error": "bad symbol or tf"})
+            if path == "/api/fx":
+                try:
+                    return self._json(200, api_fx())
+                except Exception:
+                    return self._json(503, {"error": "fx unavailable"})
             if path == "/api/arms":
                 return self._json(200, api_arms())
             if path == "/api/arm_trades":

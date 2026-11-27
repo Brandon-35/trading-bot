@@ -2,7 +2,7 @@
 <html lang="vi">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex">
 <title>Bot Giao Dịch · Bảng điều khiển</title>
 <link rel="icon" href="/static/logo.svg" type="image/svg+xml">
@@ -14,19 +14,22 @@
   <a class="logo" href="#overview"><img src="/static/logo.svg" alt="" width="28" height="28"><span class="nm">Bot Giao Dịch<small>Binance Futures · AI</small></span></a>
   <nav class="tabs" id="tabs">
     <a href="#overview" data-tab="overview">Tổng quan</a>
-    <a href="#positions" data-tab="positions">Vị thế<b id="posCount" class="cnt" hidden></b></a>
+    <a href="#positions" data-tab="positions">Vị thế<b class="cnt posCount" hidden></b></a>
     <a href="#history" data-tab="history">Lịch sử lệnh</a>
     <a href="#decisions" data-tab="decisions">Quyết định AI</a>
     <a href="#account" data-tab="account">Tài khoản</a>
     <a href="#v2" data-tab="v2">Thử nghiệm v2</a>
     <a href="#committee" data-tab="committee">Hội đồng AI</a>
+    <a href="#system" data-tab="system">Hệ thống</a>
   </nav>
   <div class="right">
-    <span class="live" id="live"><i></i><span id="liveTxt">TRỰC TIẾP</span></span>
-    <form method="post" action="/logout"><button type="submit" class="btn">Đăng xuất</button></form>
+    <div class="seg" id="unit" role="group" aria-label="Đơn vị tiền"><button type="button" data-u="usdt">USDT</button><button type="button" data-u="vnd">VND</button></div>
+    <span class="live" id="live"><i></i><span id="liveTxt">TRỰC TIẾP</span><span id="liveAge"></span></span>
+    <form class="lo" method="post" action="/logout"><button type="submit" class="btn">Đăng xuất</button></form>
   </div>
 </header>
 <main id="main">
+  <div class="fx" id="fx"></div>
   <section id="tab-overview" class="tab"></section>
   <section id="tab-positions" class="tab"></section>
   <section id="tab-history" class="tab"></section>
@@ -34,7 +37,10 @@
   <section id="tab-account" class="tab"></section>
   <section id="tab-v2" class="tab"></section>
   <section id="tab-committee" class="tab"></section>
+  <section id="tab-system" class="tab tab-system"></section>
 </main>
+<nav class="bnav" id="bnav" aria-label="Điều hướng chính"></nav>
+<div class="sheet" id="sheet" hidden></div>
 <script src="/static/lightweight-charts.js"></script>
 <script src="/static/app.js"></script>
 </body>

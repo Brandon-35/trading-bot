@@ -1,0 +1,232 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Trading Bot — Báo cáo hệ thống</title>
+<style data-rpt>
+.rpt{--bg:#0b0e11;--card:#181a20;--line:#2b3139;--tx:#eaecef;--mut:#848e9c;--y:#f0b90b;--g:#0ecb81;--r:#f6465d;--rpt-top:0px;
+color:var(--tx);font:14px/1.6 -apple-system,Segoe UI,Roboto,"Noto Sans",sans-serif;text-align:left}
+.rpt *{box-sizing:border-box}
+.rpt [id]{scroll-margin-top:calc(var(--rpt-top) + 56px)}
+.rpt .wrap{max-width:1040px;margin:0 auto;padding:26px 18px 60px}
+.rpt h1{font-size:23px;margin:0 0 4px}.rpt h1 b{color:var(--y)}.rpt h2{font-size:17px;margin:32px 0 10px;padding-left:10px;border-left:3px solid var(--y)}
+.rpt h3{font-size:14px;margin:14px 0 6px;color:var(--y)}.rpt .mut{color:var(--mut)}.rpt a{color:var(--y);text-decoration:none}
+.rpt nav{position:sticky;top:var(--rpt-top);z-index:5;display:flex;flex-wrap:nowrap;gap:6px;margin:14px 0 0;padding:8px 0;background:var(--bg);overflow-x:auto;scrollbar-width:none}
+.rpt nav::-webkit-scrollbar{display:none}
+.rpt nav a{flex:none;color:var(--mut);border:1px solid var(--line);padding:5px 12px;border-radius:999px;font-size:13px}.rpt nav a:hover{color:var(--y);border-color:var(--y)}
+.rpt .grid{display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));margin:0}
+.rpt .card{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:12px 14px}
+.rpt .kpi .v{font-size:19px;font-weight:700;white-space:normal}.rpt .kpi .l{color:var(--mut);font-size:13px;margin:0}
+.rpt table{width:100%;border-collapse:collapse;font-size:13px;white-space:normal}
+.rpt th,.rpt td{border-bottom:1px solid var(--line);padding:6px 8px;text-align:left;vertical-align:top}
+.rpt th{color:var(--mut);font-weight:600;background:#1e2329;position:static}
+.rpt tbody tr:hover{background:none}
+.rpt code,.rpt pre{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px}.rpt code{background:#1e2329;padding:1px 5px;border-radius:4px;color:#f8d33a;overflow-wrap:anywhere}
+.rpt pre{background:#11141a;border:1px solid var(--line);border-radius:6px;padding:10px 12px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;color:#d6dbe1;margin:6px 0}
+.rpt .g{color:var(--g)}.rpt .r{color:var(--r)}.rpt .y{color:var(--y)}
+.rpt .badge{display:inline-block;font-size:12px;font-weight:700;padding:1px 7px;border-radius:4px;border:0}.rpt .bg{background:rgba(14,203,129,.15);color:var(--g)}.rpt .br{background:rgba(246,70,93,.15);color:var(--r)}.rpt .by{background:rgba(240,185,11,.15);color:var(--y)}
+.rpt .warn{border-left:3px solid var(--r);background:rgba(246,70,93,.07);padding:9px 14px;border-radius:4px;margin:10px 0}
+.rpt .note{border-left:3px solid var(--y);background:rgba(240,185,11,.07);padding:9px 14px;border-radius:4px;margin:10px 0}
+.rpt .steps{counter-reset:s;list-style:none;padding:0;margin:6px 0}.rpt .steps li{counter-increment:s;position:relative;padding:5px 0 5px 34px;border-bottom:1px dashed var(--line)}.rpt .steps li:before{content:counter(s);position:absolute;left:0;top:5px;width:22px;height:22px;border-radius:50%;background:#2b2f36;color:var(--y);font-size:12px;font-weight:700;text-align:center;line-height:22px}
+.rpt details{background:var(--card);border:1px solid var(--line);border-radius:6px;margin:8px 0;padding:8px 12px}.rpt summary{cursor:pointer;font-weight:600;min-height:28px}
+.rpt ul{margin:6px 0;padding-left:20px}.rpt li{margin:2px 0}
+.rpt footer{margin-top:36px;color:var(--mut);font-size:13px}
+.rpt .tscroll{overflow-x:auto}.rpt .tscroll table{min-width:520px}
+@media(max-width:600px){
+.rpt{font-size:15px}
+.rpt .wrap{padding:14px 2px 24px}
+.rpt h1{font-size:20px}
+.rpt table,.rpt tbody,.rpt tr,.rpt td{display:block;width:100%}
+.rpt tr:has(th){display:none}
+.rpt tr{padding:10px 12px;border:1px solid var(--line);border-radius:8px;margin:0 0 8px;background:var(--card)}
+.rpt td{border:0;padding:3px 0;overflow-wrap:anywhere}
+.rpt td:first-child{font-weight:600;color:var(--y);padding-bottom:5px}
+.rpt td[data-label]:before{content:attr(data-label);display:block;color:var(--mut);font-size:13px;font-weight:400}
+.rpt .tscroll{position:relative}
+.rpt .tscroll:before{content:attr(data-hint);display:block;color:var(--mut);font-size:13px;padding:0 0 6px}
+.rpt .tscroll table{display:table;width:auto}.rpt .tscroll tbody{display:table-row-group}.rpt .tscroll tr{display:table-row;padding:0;border:0;margin:0;background:none}
+.rpt .tscroll tr:has(th){display:table-row}.rpt .tscroll td{display:table-cell;width:auto;padding:6px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
+.rpt .tscroll td:first-child{color:inherit;font-weight:400}.rpt .tscroll td[data-label]:before{display:none}
+.rpt .tscroll th{white-space:nowrap}
+.rpt .kpi .l{font-size:13px}
+}
+</style>
+<style data-standalone>body{margin:0;background:#0b0e11}</style>
+
+</head>
+<body><div class="rpt"><div class="wrap">
+
+<h1><b>Trading Bot</b> · Báo cáo hệ thống</h1>
+<div class="mut">Binance USDⓈ-M Futures · cập nhật 2026-11-27 · repo <code>Brandon-35/trading-bot</code> · dashboard <a href="https://trade.brandondev.online">trade.brandondev.online</a> · giờ trong báo cáo = giờ VN (ICT, UTC+7)</div>
+<nav><a href="#status">Trạng thái</a><a href="#faq">Hỏi nhanh</a><a href="#when">Khi nào chạy</a><a href="#entry">Vào lệnh</a><a href="#exit">Chốt lời / cắt lỗ</a><a href="#news">Tin tức</a><a href="#committee">Hội đồng AI</a><a href="#rules">Quản lý vốn</a><a href="#stack">Stack</a><a href="#data">Backtest</a><a href="#sources">Nguồn</a><a href="#risk">Rủi ro</a></nav>
+
+<h2 id="status">1. Trạng thái</h2>
+<div class="grid">
+<div class="card kpi"><div class="l">Bot tiền thật · v1</div><div class="v g">LIVE</div><div class="mut">từ 27/11 13:25 · 18,69 USDT</div></div>
+<div class="card kpi"><div class="l">Paper v2 · Chỉ tín hiệu</div><div class="v y">PAPER</div><div class="mut">vốn ảo 18,74 · 0/30 lệnh</div></div>
+<div class="card kpi"><div class="l">Paper v2 · Hội đồng AI</div><div class="v y">PAPER</div><div class="mut">vốn ảo 18,74 · 0/30 lệnh</div></div>
+<div class="card kpi"><div class="l">Mục tiêu</div><div class="v">18,7 → 120 USDT</div><div class="mut">sàn dừng 12 · review ~27/12</div></div>
+</div>
+<div class="note">Chuyển tiền thật sang v2 chỉ khi bot Hội đồng AI đủ <b>30 lệnh paper</b> và owner đồng ý. Code chặn <code>STRATEGY=v2</code> + <code>MODE=live</code>.</div>
+
+<h2 id="faq">2. Hỏi nhanh</h2>
+<table>
+<tr><th style="width:30%">Câu hỏi</th><th>Trả lời</th></tr>
+<tr><td>Bot chạy liên tục không?</td><td data-label="Trả lời">Có, 24/7 trong Docker trên <code>server-brandon-service</code>, tự khởi động lại nếu crash hoặc server reboot (<code>restart: unless-stopped</code>).</td></tr>
+<tr><td>Khi nào bot vào lệnh?</td><td data-label="Trả lời">v1: mỗi giờ (giây thứ 5 sau mỗi giờ tròn). v2: trong vòng ~15 phút sau khi nến 4h đóng — <b>03:00, 07:00, 11:00, 15:00, 19:00, 23:00</b>.</td></tr>
+<tr><td>Khi nào chốt lời / cắt lỗ?</td><td data-label="Trả lời">Bất kỳ lúc nào: lệnh SL/TP nằm sẵn <b>trên sàn Binance</b>, sàn tự khớp kể cả khi bot tắt. Bot chỉ dời stop (mỗi 20 s).</td></tr>
+<tr><td>Tin tức lấy từ đâu?</td><td data-label="Trả lời">RSS Cointelegraph, Decrypt, The Block (≤ 12 giờ gần nhất, 20 tin mới nhất) + chỉ số Fear &amp; Greed.</td></tr>
+<tr><td>AI có tự vào lệnh được không?</td><td data-label="Trả lời">v2: không. Code tìm setup, AI chỉ được <b>đồng ý / bỏ qua</b>, chọn SL 1–3 ATR và TP 1,5–4R. Size, đòn bẩy, stop đều do code.</td></tr>
+<tr><td>Mất bao nhiêu tiền AI?</td><td data-label="Trả lời">~$0,0007 mỗi lần hội đồng họp. Trần $0,10/ngày (tối đa ~$3/tháng).</td></tr>
+<tr><td>Lỗ tối đa?</td><td data-label="Trả lời">2% vốn bot mỗi lệnh, tổng rủi ro mở ≤ 10%, dừng ngày khi lỗ 12% (v2) / 6% (v1), dừng hẳn khi equity &lt; 12 USDT.</td></tr>
+<tr><td>Báo cho tôi thế nào?</td><td data-label="Trả lời">Discord #trading-bot: mỗi lệnh vào/ra, lỗi, dừng; tóm tắt ngày lúc 08:00.</td></tr>
+</table>
+
+<h2 id="when">3. Khi nào chạy — lịch</h2>
+<table>
+<tr><th>Nhịp</th><th>v1 (tiền thật)</th><th>v2 (2 bot paper)</th></tr>
+<tr><td>20 giây</td><td data-label="v1 (tiền thật)">Kiểm tra vị thế có đủ SL + TP trên sàn, thiếu → đóng</td><td data-label="v2 (2 bot paper)">Kiểm tra stop phủ đủ qty; phát hiện TP1 đã khớp; dời stop hoà vốn / trailing</td></tr>
+<tr><td>15 phút (:00 :15 :30 :45)</td><td data-label="v1 (tiền thật)">—</td><td data-label="v2 (2 bot paper)">Lưu funding/OI/long-short/taker · quét 30 coin · mỗi nến 4h chỉ xét 1 lần</td></tr>
+<tr><td>Mỗi giờ (:00:05)</td><td data-label="v1 (tiền thật)">Gửi snapshot cho LLM → quyết định cho BTC/ETH/SOL</td><td data-label="v2 (2 bot paper)">Bot Hội đồng AI xem lại vị thế đang mở: giữ / siết stop / đóng</td></tr>
+<tr><td>Nến 4h đóng</td><td data-label="v1 (tiền thật)">—</td><td data-label="v2 (2 bot paper)">03, 07, 11, 15, 19, 23 giờ → setup mới có thể xuất hiện</td></tr>
+<tr><td>Mỗi ngày 07:00</td><td colspan="2">Ngày UTC mới: reset giới hạn lệnh/ngày và mốc dừng ngày</td></tr>
+<tr><td>Mỗi ngày 08:00</td><td colspan="2">Tóm tắt ngày gửi Discord</td></tr>
+</table>
+
+<h2 id="entry">4. Flow vào lệnh (v2)</h2>
+<ol class="steps">
+<li><b>Danh sách coin</b> (mỗi ngày): top 30 altcoin theo volume 24h, lệnh tối thiểu ≤ 5 USDT, bỏ BTC/ETH (chỉ dùng làm xu hướng) và cổ phiếu/vàng token hoá.</li>
+<li><b>Tín hiệu <code>pullback</code> 4h</b> trên nến đã đóng: EMA20 &gt; EMA50, giá trên EMA dài (≈ EMA300 ngày), nến chạm EMA20 rồi đóng trên nó, nến xanh → LONG (SHORT đối xứng). Stop đề xuất = 2 × ATR14.</li>
+<li><b>Lọc</b>: bỏ nếu cặp đó đã có vị thế (của bot hoặc lệnh tay) · đám đông (LONG khi funding &gt; 0,03% và long/short &gt; 2; SHORT ngược lại) · vượt giới hạn (3 vị thế, 2 cùng chiều, 6 lệnh/ngày, tổng rủi ro 10%) · không đủ 5 USDT ngay cả với stop 1 ATR.</li>
+<li><b>Quyết</b>: bot Chỉ tín hiệu → vào luôn (SL 2 ATR, TP1 2R). Bot Hội đồng AI → 3 phân tích + bull/bear + lead; chỉ vào khi lead trả <code>open</code>, cùng chiều, confidence ≥ 0,6.</li>
+<li><b>Tính size</b>: qty = vốn bot × 2% ÷ khoảng stop (làm tròn xuống; dưới 5 USDT → bỏ, không làm tròn lên). Đòn bẩy = mức nhỏ nhất ≤ 10x đủ margin và giá thanh lý cách ≥ 2 × stop. Isolated margin.</li>
+<li><b>Đặt lệnh</b>: limit post-only ở giá bid/ask tốt nhất (phí maker 0,02%), chờ 60 s. Chưa khớp → market (taker 0,05%) nếu giá chưa chạy quá 0,5 ATR, không thì bỏ.</li>
+<li><b>Bảo vệ ngay</b>: đặt trên sàn stop-market cho toàn bộ qty + take-profit cho ½ qty. Đặt lỗi → đóng vị thế ngay + báo Discord.</li>
+</ol>
+<p class="mut">v1 khác: mỗi giờ 1 LLM nhận snapshot BTC/ETH/SOL (nến 4h/1h/15m, chỉ báo 1h, funding, tin) và trả long/short/close/hold kèm SL/TP; code kiểm (RR ≥ 1,5, confidence ≥ 0,6, ≤ 2 vị thế) rồi vào market với SL + TP toàn bộ.</p>
+
+<h2 id="exit">5. Flow chốt lời / cắt lỗ (v2)</h2>
+<ol class="steps">
+<li><b>Cắt lỗ</b>: stop-market trên sàn theo MARK_PRICE. Giá chạm → sàn đóng hết, lỗ ≈ 1R (2% vốn) + phí.</li>
+<li><b>Chốt lời lần 1 (TP1)</b>: ½ qty ở +2R (Hội đồng: 1,5–4R do lead chọn), sàn tự khớp.</li>
+<li><b>Hoà vốn</b>: bot thấy qty giảm (≤ 20 s) → dời stop phần còn lại về giá vào. Từ đây lệnh không thể lỗ (trừ trượt giá).</li>
+<li><b>Trailing</b>: stop = đỉnh (LONG) / đáy (SHORT) từ lúc vào − 2,5 × ATR; chỉ dời theo hướng có lợi, mỗi bước ≥ 0,1 ATR. Luôn đặt stop mới trước, huỷ stop cũ sau.</li>
+<li><b>AI quản lý</b> (bot Hội đồng, mỗi giờ): được giữ, siết stop gần giá hơn, hoặc đóng sớm khi luận điểm hỏng. Code từ chối mọi lệnh nới stop.</li>
+<li><b>Bảo hiểm</b>: mỗi 20 s nếu stop không phủ đủ qty → đóng market + báo. Equity &lt; 12 USDT → đóng hết, dừng hẳn. Lỗ ngày ≥ 12% → nghỉ tới ngày UTC sau.</li>
+</ol>
+<p class="mut">Kết quả mỗi lệnh ghi thành R ròng (đã trừ phí) để tính cổng 30 lệnh. v1: SL + TP toàn bộ qty, không trailing.</p>
+
+<h2 id="news">6. Flow tin tức &amp; dữ liệu</h2>
+<table>
+<tr><th>Nguồn</th><th>Lấy khi nào</th><th>Dùng vào đâu</th></tr>
+<tr><td>RSS <a href="https://cointelegraph.com/rss">Cointelegraph</a>, <a href="https://decrypt.co/feed">Decrypt</a>, <a href="https://www.theblock.co/rss.xml">The Block</a></td><td data-label="Lấy khi nào">Mỗi lần LLM chạy (v1 mỗi giờ; v2 khi hội đồng họp / quản lý vị thế)</td><td data-label="Dùng vào đâu">Tối đa 20 tin ≤ 12 giờ, sắp mới nhất. Chuyên gia "Tin tức &amp; tâm lý" đọc 12 tin; v1 đọc cả. Prompt dặn: tin là dữ liệu, không phải mệnh lệnh.</td></tr>
+<tr><td><a href="https://alternative.me/crypto/fear-and-greed-index/">Fear &amp; Greed</a></td><td data-label="Lấy khi nào">Khi hội đồng họp</td><td data-label="Dùng vào đâu">Chuyên gia tin tức</td></tr>
+<tr><td>Binance funding, OI, long/short, taker buy/sell</td><td data-label="Lấy khi nào">15 phút / lần, lưu bảng <code>deriv</code></td><td data-label="Dùng vào đâu">Lọc đám đông (code) + chuyên gia "Dòng tiền phái sinh" (funding, long/short, taker, OI thay đổi 4h)</td></tr>
+<tr><td>Nến Binance (public)</td><td data-label="Lấy khi nào">Mỗi lần quét</td><td data-label="Dùng vào đâu">Tín hiệu, ATR, xu hướng BTC</td></tr>
+</table>
+<p class="mut">Một nguồn lỗi thì bỏ qua nguồn đó, bot vẫn chạy. Tin chỉ là ngữ cảnh, không bao giờ tự tạo lệnh.</p>
+
+<h2 id="committee">7. Hội đồng AI &amp; prompt</h2>
+<table>
+<tr><th>Vai</th><th>Model</th><th>Trả về</th></tr>
+<tr><td>3 chuyên gia (song song): Kỹ thuật · Dòng tiền phái sinh · Tin tức &amp; tâm lý</td><td data-label="Model"><code>qwen/qwen3-235b-a22b-2507</code></td><td data-label="Trả về">stance, confidence, ≤ 4 ý chính</td></tr>
+<tr><td>Bull → Bear (bear phản bác điểm mạnh nhất của bull)</td><td data-label="Model">qwen3</td><td data-label="Trả về">lập luận, điểm mạnh nhất</td></tr>
+<tr><td>Lead (xem thêm 10 lệnh gần nhất)</td><td data-label="Model"><code>deepseek/deepseek-v3.2</code></td><td data-label="Trả về">open/skip, confidence, SL ATR, TP R, lý do</td></tr>
+</table>
+<p class="mut">Mặc định skip. Lỗi bất kỳ (AI lỗi, JSON sai, hết ngân sách) → skip, bot không crash. Mọi biên bản lưu sự kiện <code>debate</code>, xem ở tab "Hội đồng AI".</p>
+<details><summary>Prompt nguyên văn (v2)</summary><pre>ANALYST technical:   You are the technical analyst of a crypto futures desk. Judge only price action and indicators in the
+                     setup features (trend, momentum, volatility, levels, BTC trend).
+ANALYST derivatives: You are the derivatives/flow analyst of a crypto futures desk. Judge only funding, open interest
+                     change, long/short ratio and taker flow. If the data is empty, answer neutral with low confidence.
+ANALYST news:        You are the news/sentiment analyst of a crypto futures desk. Judge only the headlines and the
+                     Fear &amp; Greed index. If nothing relevant, answer neutral with low confidence.
+  → Answer {"stance": "long"|"short"|"neutral", "confidence": 0..1, "key_points": [up to 4 short strings]}.
+
+BULL: You argue FOR taking the proposed trade, using the analyst reports. Be concrete and honest; do not invent data.
+BEAR: You argue AGAINST taking the proposed trade, using the analyst reports. Rebut the bull's strongest point directly.
+  → Answer {"argument": str (max 120 words), "strongest_point": str}.
+
+LEAD: You are the lead trader of a small crypto futures account. A rule-based engine proposed one trade; you decide
+whether to take it. Default is skip. Open only if the evidence for the setup's side clearly outweighs the bear case.
+Side must equal the setup's side, otherwise skip. Analyst disagreement alone is not a reason to skip. Judge the
+arguments on substance, independent of speaking order. Never chase a move that already ran. Weigh the recent closed
+trades only as context, not as a reason to flip.
+  → Answer {"action": "open"|"skip", "side", "confidence": 0..1, "sl_atr": 1.0-3.0, "tp_r": 1.5-4.0, "rationale"}.
+
+MANAGE (hourly): You review one open crypto futures position every hour. You may only hold, tighten the stop (move it
+closer to the price, never wider) or close early. Default is hold; close only if the thesis is clearly broken.
+  → Answer {"action": "hold"|"tighten"|"close", "new_stop": number|null, "rationale"}.
+
+(Mọi prompt kết thúc bằng: Reply with one JSON object only, no prose.)</pre></details>
+<details><summary>Prompt v1 (bot tiền thật, <code>bot/prompts/system.md</code>) — tóm tắt</summary><pre>Mỗi giờ nhận snapshot JSON: equity, vị thế, giá + ATR14/RSI14/EMA20/EMA50 khung 1h, funding, nến 4h/1h/15m, tin RSS.
+Trả cho MỖI cặp: long | short | close | hold, kèm stop_loss, take_profit, confidence.
+Code ép: stop ≥ max(0,5 ATR, 0,8% giá) và ≤ 3 ATR; TP ≥ 1,5 × stop; confidence &lt; 0,6 = hold; ≤ 2 vị thế.
+Model: upstage/solar-mini-4-5 qua OpenRouter.</pre></details>
+
+<h2 id="rules">8. Quản lý vốn — luật cứng trong code</h2>
+<table>
+<tr><th>Luật</th><th>v1</th><th>v2</th></tr>
+<tr><td>Vốn tính size</td><td data-label="v1">equity</td><td data-label="v2">giá trị bot (vốn đầu + lãi/lỗ lệnh bot), không phải ví</td></tr>
+<tr><td>Rủi ro / lệnh</td><td data-label="v1">2%</td><td data-label="v2">2% → 3% sau 30 lệnh TB ≥ +0,10R · giảm ½ sau 2 lệnh thua liên tiếp</td></tr>
+<tr><td>Vị thế tối đa</td><td data-label="v1">2</td><td data-label="v2">3, tối đa 2 cùng chiều, tổng rủi ro ≤ 10%, ≤ 6 lệnh/ngày</td></tr>
+<tr><td>Đòn bẩy</td><td data-label="v1">≤ 5x</td><td data-label="v2">≤ 10x, thanh lý cách ≥ 2 × stop</td></tr>
+<tr><td>Dừng ngày / dừng hẳn</td><td data-label="v1">6% / 12 USDT</td><td data-label="v2">12% / 12 USDT</td></tr>
+<tr><td>Lệnh tay của owner</td><td colspan="2">Không đụng. Bot chỉ nhận lệnh có ID <code>x-cvBPrNm9</code> sau 27/11 13:25</td></tr>
+</table>
+
+<h2 id="stack">9. Stack &amp; vận hành</h2>
+<table>
+<tr><td>Code</td><td>Python 3.12 · ccxt <code>binanceusdm</code> · pydantic · httpx · SQLite · 114 test (pytest)</td></tr>
+<tr><td>AI</td><td>OpenRouter: qwen3-235b (phân tích), deepseek-v3.2 (lead), solar-mini (v1)</td></tr>
+<tr><td>Dashboard</td><td>Python <code>http.server</code> + JS thuần + TradingView Lightweight Charts · đăng nhập cookie ký · không giữ key Binance</td></tr>
+<tr><td>Server</td><td>Docker Compose, Caddy TLS · container <code>live</code>, <code>paper-signal</code>, <code>paper-committee</code>, <code>dashboard</code></td></tr>
+<tr><td>Deploy</td><td>Tay: <code>rsync bot/</code> → <code>/opt/services/trading-bot</code> → <code>docker compose --profile paper2 up -d --build</code>. Không CI.</td></tr>
+<tr><td>Báo động</td><td>Discord webhook #trading-bot</td></tr>
+</table>
+
+<h2 id="data">10. Backtest &amp; số liệu</h2>
+<p class="mut">720 ngày, nến 4h, 30 altcoin, đã trừ phí, chốt ½ ở 2R + trailing. Cổng: ≥ +0,10R ở cả 2 nửa và ≥ 150 lệnh.</p>
+<div class="tscroll" data-hint="Vuốt ngang để xem đủ cột ›"><table>
+<tr><th>Tín hiệu</th><th>Lệnh</th><th>Thắng</th><th>R TB</th><th>Nửa đầu → sau</th><th></th></tr>
+<tr><td><b>pullback</b> (đang dùng)</td><td data-label="Lệnh">1883</td><td data-label="Thắng">37%</td><td class="g" data-label="R TB">+0,127</td><td data-label="Nửa đầu → sau">+0,149 → +0,109</td><td><span class="badge bg">ĐẠT</span></td></tr>
+<tr><td>pullback, chỉ coin vào được với 18,7 USDT (ATR ≤ 3,5%)</td><td data-label="Lệnh">1703</td><td data-label="Thắng">36%</td><td data-label="R TB">+0,119</td><td data-label="Nửa đầu → sau">+0,212 → <span class="r">+0,046</span></td><td><span class="badge br">YẾU</span></td></tr>
+<tr><td>breakout</td><td data-label="Lệnh">1483</td><td data-label="Thắng">36%</td><td data-label="R TB">+0,085</td><td data-label="Nửa đầu → sau">+0,093 → +0,079</td><td><span class="badge br">KHÔNG</span></td></tr>
+<tr><td>squeeze</td><td data-label="Lệnh">138</td><td data-label="Thắng">39%</td><td data-label="R TB">+0,265</td><td data-label="Nửa đầu → sau">+0,299 → +0,243</td><td><span class="badge by">ÍT LỆNH</span></td></tr>
+<tr><td>Khung 1h (mọi tín hiệu)</td><td colspan="5">không có lợi thế</td></tr>
+</table></div>
+<p class="mut">Monte Carlo 18,7 → 120 (sàn 12): lợi thế +0,10R, rủi ro 3% → 65% tới đích / 27% cháy, cần ~700 lệnh; +0,15R → 89% / 10%, ~530 lệnh. Rủi ro 5% nhanh hơn nhưng cháy 32–52%.</p>
+
+<h2 id="sources">11. Nguồn đã học theo</h2>
+<h3>Áp dụng vào bot</h3>
+<table>
+<tr><th>Nguồn</th><th>Học được gì → áp dụng</th></tr>
+<tr><td><a href="https://github.com/TauricResearch/TradingAgents">TradingAgents</a> (<a href="https://arxiv.org/abs/2412.20138">paper</a>)</td><td data-label="Học được gì → áp dụng">Cấu trúc chuyên gia → bull/bear → người quyết; prompt "xung đột không phải lý do skip", "đánh giá độc lập thứ tự nói", output JSON có schema → hội đồng v2</td></tr>
+<tr><td><a href="https://www.traderank.ai/alpha-arena-leaderboard">Alpha Arena (nof1)</a>, <a href="https://www.gncrypto.news/news/qwen-wins-alpha-arena-season-1-with-22-percent-returns/">kết quả S1</a>, <a href="https://www.traderank.ai/blog/ai-traders-bull-vs-bear-markets">traderank</a>, <a href="https://news.ycombinator.com/item?id=45976832">thảo luận HN</a></td><td data-label="Học được gì → áp dụng">LLM tự trade lỗ nặng (GPT-5 −59%, Claude −42%, Qwen +22%); bên thắng trade ít, bên thua trade nhiều + đòn bẩy cao → ít lệnh, phí thấp, AI không tự quyết size</td></tr>
+<tr><td><a href="https://arxiv.org/abs/2508.17536">Debate or Vote</a></td><td data-label="Học được gì → áp dụng">Tranh luận nhiều AI chưa chắc hơn bỏ phiếu → coi hội đồng là giả thuyết, so sánh với bot Chỉ tín hiệu</td></tr>
+<tr><td><a href="https://arxiv.org/html/2611.18934v1">Audit 91 paper LLM trading</a></td><td data-label="Học được gì → áp dụng">Đa số backtest ngắn, bỏ qua phí → tự backtest 720 ngày có phí, cổng 2 nửa</td></tr>
+<tr><td><a href="https://arxiv.org/abs/2602.11708">AdaptiveTrend</a></td><td data-label="Học được gì → áp dụng">Theo xu hướng khung 4h–6h trên nhiều coin có lợi thế sau phí → chọn 4h, 30 altcoin</td></tr>
+<tr><td><a href="https://arxiv.org/html/2607.09426v2">Chu kỳ trong ngày</a>, <a href="https://quantpedia.com/periodicity-in-cryptocurrencies-recurrent-patterns-in-volatility-and-volume/">Quantpedia</a></td><td data-label="Học được gì → áp dụng">Biến động dồn vào mốc giờ tròn → dùng nến đã đóng, chờ 5 s sau mốc</td></tr>
+<tr><td><a href="https://papers.ssrn.com/sol3/papers.cfm?abstract_id=7520320">Funding cực đoan</a>, <a href="https://arxiv.org/html/2212.06888v7">Perpetual futures</a></td><td data-label="Học được gì → áp dụng">Funding/OI/long-short hợp làm bộ lọc đám đông, không làm tín hiệu vào → luật crowded()</td></tr>
+<tr><td>Nghiên cứu 500–600 agent LLM (14.596 lệnh)</td><td data-label="Học được gì → áp dụng">Exit cơ học tốt hơn AI tự thoát (+39 bps/vị thế) → SL/TP/trailing do code, AI chỉ được siết</td></tr>
+<tr><td><a href="https://developers.binance.com/docs/derivatives/usds-margined-futures/general-info">Binance API docs</a>, <a href="https://www.binance.com/en/fee/futureFee">biểu phí</a></td><td data-label="Học được gì → áp dụng">Lệnh tối thiểu 5 USDT (BTC 50, ETH 20), phí maker 0,02% / taker 0,05% → trade altcoin, ưu tiên post-only</td></tr>
+</table>
+<h3>Đã xem, không áp dụng</h3>
+<table>
+<tr><td><a href="https://github.com/virattt/ai-hedge-fund">ai-hedge-fund</a>, <a href="https://github.com/AI4Finance-Foundation/FinRobot">FinRobot</a>, <a href="https://github.com/pipiku915/FinMem-LLM-StockTrading">FinMem</a></td><td>Cho cổ phiếu, chỉ backtest</td></tr>
+<tr><td><a href="https://github.com/tinkle-community/nofx">nofx</a>, <a href="https://github.com/HammerGPT/Hyper-Alpha-Arena">Hyper-Alpha-Arena</a>, <a href="https://github.com/LynchzDEV/ai-auto-trader-ahh">ai-auto-trader</a>, <a href="https://github.com/kukapay/awesome-alpha-arena">awesome-alpha-arena</a></td><td>Bản sao Alpha Arena, không có lãi thật được kiểm chứng</td></tr>
+<tr><td><a href="https://papers.ssrn.com/sol3/papers.cfm?abstract_id=6701738">Cross-sectional alpha</a>, <a href="https://papers.ssrn.com/sol3/Delivery.cfm?abstractid=3774118">Crypto carry</a></td><td>Xếp hạng chéo không có lợi thế; carry cần vốn lớn, lãi thấp</td></tr>
+<tr><td>Bài viral trên X (<a href="https://x.com/i/status/2125722897897439651">+$285k</a>, <a href="https://x.com/i/status/2125659461532737757">+$13k/25 ngày</a>, <a href="https://x.com/i/status/2124554524027502931">"prompt leak"</a>, <a href="https://x.com/i/status/2124184196319219965">"unbeatable"</a>)</td><td>Không có PnL kiểm chứng được → bỏ qua</td></tr>
+</table>
+
+<h2 id="risk">12. Rủi ro cần biết</h2>
+<div class="warn"><b>Vốn nhỏ là giới hạn lớn nhất.</b> 18,7 USDT × 2% = 0,37 USDT rủi ro/lệnh → stop xa nhất ~7,5% giá mới đạt 5 USDT. Coin biến động mạnh bị loại (2 setup đầu BLESS, LISTA đều vậy), mà phần còn lại chỉ +0,046R ở nửa sau backtest → ít lệnh, lãi chậm.</div>
+<ul>
+<li>Chưa có bot nhiều-AI nào lãi thật được kiểm chứng; paper 30 lệnh sẽ trả lời.</li>
+<li>Backtest bỏ qua funding và có thiên lệch sống sót.</li>
+<li>Tới 120 USDT cần ~500–700 lệnh với lợi thế +0,10–0,15R — tính bằng tháng/năm, không phải ngày.</li>
+<li>Muốn bot vào được coin biến động mạnh: cần thêm vốn (ví dụ 100 USDT → stop tối đa ~25%).</li>
+</ul>
+
+<footer>Nguồn nội bộ: issue #9, PR #6–#16, <code>docs/plans/2026-11-27-llm-committee-strategy.md</code>, <code>docs/hub/*</code>. Không chứa key hay mật khẩu.</footer>
+</div></div></body></html>
