@@ -363,9 +363,165 @@ function renderAccount() {
   ], fills));
 }
 
+
+// ---------- v2 paper test ----------
+const ARM_COL = { signal: '#fcd535', committee: '#0ecb81' };
+let v2 = null, tradeArm = 'committee';
+function seriesData(pts) { // lightweight-charts needs strictly ascending unique times
+  const m = new Map();
+  (pts || []).forEach((p) => m.set(Math.round(p[0]) + TZ, p[1]));
+  return Array.from(m).sort((a, b) => a[0] - b[0]).map((x) => ({ time: x[0], value: x[1] }));
+}
+function buildV2() {
+  const root = $('#tab-v2');
+  root.appendChild(el('div', 'banner', 'Hai bot ảo chạy bằng dữ liệu thật, tiền ảo 18,74 USDT mỗi bot: "Chỉ tín hiệu" và "Hội đồng AI". Cần ≥ 30 lệnh của bot Hội đồng AI để quyết định có chuyển sang tiền thật.'));
+  const cols = el('div', 'cols'); cols.id = 'v2cols'; root.appendChild(cols);
+  const cp = panel('Giá trị hai bot', 'Đường liền = tiền của từng bot sau mỗi lệnh đóng. Đường nét đứt = vốn ban đầu.');
+  const box = el('div', 'chart'); cp.appendChild(box); root.appendChild(cp);
+  const ch = mkChart(box, { localization: { priceFormatter: (p) => p.toFixed(2) } });
+  const lines = {};
+  Object.keys(ARM_COL).forEach((k) => { lines[k] = ch.addSeries(LC.LineSeries, { color: ARM_COL[k], lineWidth: 2, priceLineVisible: false, title: k === 'signal' ? 'Tín hiệu' : 'Hội đồng' }); });
+  lines.base = ch.addSeries(LC.LineSeries, { color: C.mut, lineWidth: 1, lineStyle: 2, priceLineVisible: false, lastValueVisible: false });
+  const pp = panel('Vị thế đang mở', 'Lệnh ảo đang giữ của cả hai bot.'); pp.appendChild(el('div')).id = 'v2open'; root.appendChild(pp);
+  const tp = panel('Lệnh đã đóng', 'Mới nhất ở trên. R = lãi/lỗ chia cho số tiền rủi ro ban đầu.');
+  const sel = el('select', 'sel'); sel.id = 'armSel';
+  [['committee', 'Hội đồng AI'], ['signal', 'Chỉ tín hiệu']].forEach((a) => { const o = el('option', null, a[1]); o.value = a[0]; sel.appendChild(o); });
+  sel.addEventListener('change', () => { tradeArm = sel.value; loadArmTrades().catch(() => {}); });
+  tp.head.appendChild(sel); tp.appendChild(el('div')).id = 'v2trades'; root.appendChild(tp);
+  charts.v2 = { ch, lines, box };
+}
+function armCol(a) {
+  const c = el('div'), h = el('div', 'colh');
+  const d = el('i', 'dot'); d.style.background = ARM_COL[a.name]; h.appendChild(d); h.appendChild(el('span', null, 'Bot "' + a.label_vi + '"'));
+  c.appendChild(h);
+  const g = el('div', 'grid');
+  g.appendChild(card('Giá trị', f2(a.equity) + ' USDT', 'Vốn ' + f2(a.start), 'Tiền ảo hiện có, gồm lãi/lỗ chưa chốt.'));
+  g.appendChild(card('Lãi/lỗ', pn(a.pnl, 2, ' USDT'), pn(a.pnl_pct, 2, '%'), 'So với vốn ban đầu.'));
+  g.appendChild(card('Số lệnh', String(a.trades), 'Đang mở ' + (a.open || []).length, 'Lệnh đã đóng.'));
+  g.appendChild(card('Tỉ lệ thắng', f2(a.win_rate, 1) + '%', a.wins + ' thắng', 'Lệnh có lãi ròng / tổng lệnh.'));
+  g.appendChild(card('R trung bình', pn(a.avg_r, 2, 'R'), null, 'Lãi/lỗ trung bình tính theo số tiền rủi ro mỗi lệnh.'));
+  g.appendChild(card('Phí', f2(a.fees, 4) + ' USDT', null, 'Phí sàn ảo đã trừ.'));
+  g.appendChild(card('Sụt giảm tối đa', f2(a.max_dd_pct, 2) + '%', null, 'Mức tụt sâu nhất từ đỉnh.'));
+  g.appendChild(card('Mức rủi ro hiện tại', f2(a.risk_pct, 1) + '% / lệnh', null, '2% cho tới khi qua cổng lợi thế, sau đó 3%.'));
+  c.appendChild(g);
+  const eg = a.edge_gate || {}, n = eg.trades || 0, need = eg.trades_needed || 30;
+  const gc = card('Cổng lợi thế', n + '/' + need + ' lệnh', 'R TB ' + sg(eg.avg_r, 2) + (eg.passed ? ' · ĐÃ QUA' : ' · cần ≥ +0.10'), 'Cần ≥ 30 lệnh và R trung bình ≥ +0.10 để tăng rủi ro lên 3%.');
+  const pr = el('div', 'prog'), pi = el('i'); pi.style.width = Math.min(100, n / need * 100) + '%'; pr.appendChild(pi); gc.insertBefore(pr, gc.children[2]);
+  gc.style.marginTop = '12px'; c.appendChild(gc);
+  const ls = a.last_scan;
+  const info = el('div', 'foot', ls ? 'Quét gần nhất: ' + vt(ls.time) + ' · ' + ls.setups + ' setup' + (ls.universe != null ? ' / ' + ls.universe + ' cặp' : '') : 'Chưa quét lần nào.');
+  c.appendChild(info);
+  if (a.name === 'committee') c.appendChild(el('div', 'foot', 'Chi phí AI: hôm nay ' + f2(a.llm_today, 4) + ' USDT · tổng ' + f2(a.llm_total, 4) + ' USDT'));
+  return c;
+}
+async function loadV2() {
+  v2 = await api('/api/arms');
+  const cols = $('#v2cols'); clear(cols);
+  const arms = v2.arms || [];
+  arms.forEach((a) => cols.appendChild(armCol(a)));
+  const c = charts.v2;
+  arms.forEach((a) => c.lines[a.name].setData(seriesData(a.curve)));
+  const all = arms.reduce((x, a) => x.concat(a.curve || []), []);
+  if (all.length) {
+    const t = all.map((p) => p[0]), lo = Math.min.apply(null, t), hi = Math.max.apply(null, t.concat([Date.now() / 1000]));
+    c.lines.base.setData(seriesData([[lo, arms[0].start], [hi, arms[0].start]]));
+  }
+  setTimeout(() => c.ch.timeScale().fitContent(), 150);
+  const op = $('#v2open'); clear(op);
+  const rows = [];
+  arms.forEach((a) => (a.open || []).forEach((p) => rows.push(Object.assign({ arm: a.label_vi }, p))));
+  if (!rows.length) op.appendChild(empty('Không có vị thế nào', 'Cả hai bot đang đứng ngoài thị trường.'));
+  else op.appendChild(table([
+    { h: 'Bot', l: true, f: (r) => r.arm }, { h: 'Cặp', l: true, f: (r) => short(r.symbol) }, { h: 'Hướng', f: (r) => badge(r.side) },
+    { h: 'Khối lượng', f: (r) => f2(r.qty, 4) }, { h: 'Giá vào', f: (r) => px(r.entry) },
+    { h: 'Cắt lỗ (SL)', f: (r) => px(r.stop) }, { h: 'Chốt lời (TP)', f: (r) => px(r.tp) },
+    { h: 'Giá hiện tại', f: (r) => num(r.mark) ? px(r.mark) : '-' },
+  ], rows));
+  await loadArmTrades();
+}
+async function loadArmTrades() {
+  const arm = tradeArm, tr = await api('/api/arm_trades?arm=' + arm);
+  if (arm !== tradeArm) return;
+  const box = $('#v2trades'); clear(box);
+  if (!tr.length) { box.appendChild(empty('Chưa có lệnh nào đã đóng')); return; }
+  box.appendChild(table([
+    { h: 'Đóng lúc', l: true, f: (t) => vt(t.close_time) }, { h: 'Cặp', l: true, f: (t) => short(t.symbol) },
+    { h: 'Hướng', f: (t) => badge(t.side) }, { h: 'Khối lượng', f: (t) => f2(t.qty, 4) },
+    { h: 'Giá vào', f: (t) => px(t.entry) }, { h: 'Giá ra', f: (t) => px(t.exit) }, { h: 'Mở lúc', f: (t) => vt(t.open_time) },
+    { h: 'Gộp', f: (t) => pn(t.pnl, 4) }, { h: 'Phí', f: (t) => pn(-Math.abs(t.fees || 0), 4) },
+    { h: 'Ròng', f: (t) => { const s = pn(t.net, 4); s.style.fontWeight = 600; return s; } },
+    { h: 'R', f: (t) => pn(t.r, 2) }, { h: 'Lý do đóng', f: (t) => badge(t.why || '-') },
+  ], tr));
+}
+
+// ---------- AI committee ----------
+let debates = [], debFilter = 'all';
+const OPEN = new Map(); // key -> user's choice; default: only the newest is open
+const ANALYSTS = [['technical', 'Kỹ thuật'], ['derivatives', 'Dòng tiền phái sinh'], ['news', 'Tin tức & tâm lý']];
+const STANCE = { long: 'MUA/LONG', short: 'BÁN/SHORT', neutral: 'TRUNG LẬP' };
+function confBar(v) {
+  const s = el('span'), c = el('span', 'conf'), i = el('i');
+  i.style.width = Math.round(Math.min(1, Math.max(0, v || 0)) * 100) + '%'; c.appendChild(i); s.appendChild(c);
+  s.appendChild(document.createTextNode(f2((v || 0) * 100, 0) + '%')); return s;
+}
+function argBlock(title, a, kind) {
+  const d = el('div', 'arg ' + kind); d.appendChild(el('h4', null, title));
+  d.appendChild(document.createTextNode(a && a.argument ? a.argument : 'Không có dữ liệu.'));
+  if (a && a.strongest_point) { const p = el('div', 'mut'); p.style.marginTop = '6px'; p.textContent = 'Điểm mạnh nhất: ' + a.strongest_point; d.appendChild(p); }
+  return d;
+}
+function debateCard(d, idx) {
+  const key = d.time + d.symbol, open = OPEN.has(key) ? OPEN.get(key) : idx === 0;
+  const c = el('div', 'deb' + (open ? ' open' : ''));
+  const h = el('div', 'dh');
+  h.appendChild(el('span', 'mut', vt(d.time))); h.appendChild(el('b', null, short(d.symbol)));
+  h.appendChild(badge(d.side || '-')); if (d.signal) h.appendChild(el('span', 'mut', d.signal));
+  h.appendChild(el('span', 'sp'));
+  h.appendChild(confBar(d.confidence));
+  h.appendChild(el('span', 'mut', f2(d.cost, 4) + ' USDT'));
+  h.appendChild(d.action === 'open' ? el('span', 'badge enter', 'VÀO LỆNH') : el('span', 'badge skipd', 'BỎ QUA'));
+  h.addEventListener('click', () => { OPEN.set(key, c.classList.toggle('open')); });
+  c.appendChild(h);
+  const b = el('div', 'db'), ag = el('div', 'ag');
+  ANALYSTS.forEach((a) => {
+    const m = el('div', 'mini'), v = (d.analysts || {})[a[0]];
+    m.appendChild(el('h4', null, a[1]));
+    if (!v || v.unavailable) m.appendChild(el('span', 'mut', 'Không có ý kiến' + (v && v.unavailable ? ' (' + v.unavailable + ')' : '')));
+    else {
+      const t = el('div'); t.appendChild(el('span', 'badge ' + (v.stance || 'neutral'), STANCE[v.stance] || v.stance));
+      t.appendChild(document.createTextNode(' ')); t.appendChild(confBar(v.confidence)); m.appendChild(t);
+      const ul = el('ul'); (v.key_points || []).forEach((p) => ul.appendChild(el('li', null, p))); m.appendChild(ul);
+    }
+    ag.appendChild(m);
+  });
+  b.appendChild(ag);
+  b.appendChild(argBlock('Phe mua (Bull)', d.bull, 'bull')); b.appendChild(argBlock('Phe bán (Bear)', d.bear, 'bear'));
+  const lead = el('div', 'arg'); lead.appendChild(el('h4', null, 'Lead chốt'));
+  lead.appendChild(document.createTextNode(d.rationale || '-'));
+  const m = el('div', 'mut'); m.style.marginTop = '6px';
+  m.textContent = 'SL ' + f2(d.sl_atr, 2) + '×ATR · TP ' + f2(d.tp_r, 2) + 'R'; lead.appendChild(m);
+  b.appendChild(lead); c.appendChild(b);
+  return c;
+}
+function renderDebates() {
+  const root = $('#tab-committee'); clear(root);
+  const p = panel('Hội đồng AI', '3 chuyên gia phân tích, phe mua và phe bán tranh luận, rồi Lead chốt vào lệnh hay bỏ qua. Bấm vào dòng để xem chi tiết.');
+  const chips = el('div', 'chips');
+  [['all', 'Tất cả'], ['open', 'Vào lệnh'], ['skip', 'Bỏ qua']].forEach((x) => {
+    const b = el('button', 'chip' + (debFilter === x[0] ? ' on' : ''), x[1]); b.type = 'button';
+    b.addEventListener('click', () => { debFilter = x[0]; renderDebates(); });
+    chips.appendChild(b);
+  });
+  p.head.appendChild(chips); root.appendChild(p);
+  const rows = debates.filter((d) => debFilter === 'all' || d.action === debFilter);
+  if (!rows.length) { p.appendChild(empty('Chưa có cuộc tranh luận nào — hội đồng chỉ họp khi bot tìm thấy setup.')); return; }
+  rows.forEach((d, i) => root.appendChild(debateCard(d, i)));
+}
+async function loadDebates() { debates = await api('/api/debates?limit=50'); renderDebates(); }
+
 // ---------- routing ----------
-const TABS = ['overview', 'positions', 'history', 'decisions', 'account'];
-const loaders = { overview: loadOverview, positions: loadCandles, history: loadHistory, decisions: loadDecisions, account: loadAccount };
+const TABS = ['overview', 'positions', 'history', 'decisions', 'account', 'v2', 'committee'];
+const loaders = { overview: loadOverview, positions: loadCandles, history: loadHistory, decisions: loadDecisions, account: loadAccount, v2: loadV2, committee: loadDebates };
 function currentTab() { const h = location.hash.slice(1); return TABS.includes(h) ? h : 'overview'; }
 function route() {
   const t = currentTab();
@@ -375,12 +531,14 @@ function route() {
 }
 window.addEventListener('hashchange', route);
 
-buildOverview(); buildPositions();
+buildOverview(); buildPositions(); buildV2();
 route();
 pollLive();
 setInterval(pollLive, 5000);
 setInterval(() => { if (currentTab() === 'positions') loadCandles().catch(() => {}); }, 30000);
 setInterval(() => { if (currentTab() === 'overview') loadOverview().catch(() => {}); }, 30000);
+setInterval(() => { if (currentTab() === 'v2') loadV2().catch(() => {}); }, 15000);
+setInterval(() => { if (currentTab() === 'committee') loadDebates().catch(() => {}); }, 30000);
 
 // TradingView attribution (license)
 const f = el('div', 'foot'); f.appendChild(document.createTextNode('Biểu đồ bởi '));

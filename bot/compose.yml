@@ -92,6 +92,42 @@ services:
       OPENROUTER_MODEL: ${OPENROUTER_MODEL:-anthropic/claude-haiku-5.5}
       OPENROUTER_PRICE_IN: ${OPENROUTER_PRICE_IN:-0.10}
       OPENROUTER_PRICE_OUT: ${OPENROUTER_PRICE_OUT:-0.50}
+  # v2 paper arms (no Binance keys: public data only). docker compose --profile paper2 up -d --build
+  paper-signal:
+    <<: *bot
+    profiles: [paper2]
+    environment:
+      <<: *env
+      BOT_NAME: paper-signal
+      STRATEGY: v2
+      ARM: signal
+      DB_PATH: /data/paper_signal.db
+      PAPER_START: ${PAPER_START:-18.7392}
+      FLOOR_EQUITY: ${FLOOR_EQUITY_PAPER:-12}
+      RISK_PCT: ${RISK_PCT:-0.02}
+      RISK_PCT_PROVEN: ${RISK_PCT_PROVEN:-0.03}
+      SIGNAL: ${SIGNAL:-pullback}   # backtest 2026-11-27: 4h pullback +0.127R/trade after fees on 30 alts (720 d)
+      UNIVERSE_N: ${UNIVERSE_N:-30}
+  paper-committee:
+    <<: *bot
+    profiles: [paper2]
+    environment:
+      <<: *env
+      BOT_NAME: paper-committee
+      STRATEGY: v2
+      ARM: committee
+      DB_PATH: /data/paper_committee.db
+      PAPER_START: ${PAPER_START:-18.7392}
+      FLOOR_EQUITY: ${FLOOR_EQUITY_PAPER:-12}
+      RISK_PCT: ${RISK_PCT:-0.02}
+      RISK_PCT_PROVEN: ${RISK_PCT_PROVEN:-0.03}
+      SIGNAL: ${SIGNAL:-pullback}   # backtest 2026-11-27: 4h pullback +0.127R/trade after fees on 30 alts (720 d)
+      UNIVERSE_N: ${UNIVERSE_N:-30}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      OPENROUTER_MODEL: ${OPENROUTER_MODEL:-anthropic/claude-haiku-5.5}
+      OPENROUTER_PRICE_IN: ${OPENROUTER_PRICE_IN:-0.10}
+      OPENROUTER_PRICE_OUT: ${OPENROUTER_PRICE_OUT:-0.50}
+      LLM_DAILY_USD: ${LLM_DAILY_USD:-0.10}
   dashboard:   # read-only status page at https://trade.brandondev.online (edge Caddy), login form + signed session cookie in the app
     image: trading-bot:latest
     build: .

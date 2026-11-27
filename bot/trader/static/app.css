@@ -85,3 +85,28 @@ tfoot td{font-weight:600;background:var(--panel2)}
 .logo .nm{display:flex;flex-direction:column;line-height:1.15;font-weight:700;font-size:15px;color:var(--acc)}
 .logo small{font-weight:400;font-size:10px;color:var(--mut)}
 @media(max-width:600px){.logo small{display:none}.logo .nm{font-size:14px}}
+
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+.cols .grid{grid-template-columns:repeat(2,1fr);margin-bottom:0}
+.cols h3{margin:0 0 8px;font-size:14px}
+.colh{display:flex;align-items:center;gap:8px;margin-bottom:8px;font-weight:600}
+.dot{width:10px;height:10px;border-radius:50%;display:inline-block}
+.prog{height:8px;background:var(--line);border-radius:4px;overflow:hidden;margin-top:6px}
+.prog i{display:block;height:100%;background:var(--acc)}
+.deb{background:var(--panel);border:1px solid var(--line);border-radius:6px;margin-bottom:10px}
+.deb .dh{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:12px 16px;cursor:pointer}
+.deb .dh:hover{background:var(--panel2)}
+.deb .db{display:none;padding:0 16px 14px;border-top:1px solid var(--line)}
+.deb.open .db{display:block}
+.deb .sp{flex:1}
+.badge.enter{background:rgba(14,203,129,.15);color:var(--up);border-color:transparent}
+.badge.skipd{background:var(--panel2);color:var(--mut)}
+.badge.neutral{color:var(--mut)}
+.ag{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:12px 0}
+.mini{background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:10px 12px;min-width:0}
+.mini h4{margin:0 0 6px;font-size:12px;color:var(--mut);font-weight:500}
+.mini ul{margin:6px 0 0;padding-left:16px;color:#b7bdc6}
+.arg{margin:8px 0;padding:10px 12px;border-left:3px solid var(--line);background:var(--panel2);border-radius:0 6px 6px 0;white-space:pre-wrap}
+.arg.bull{border-color:var(--up)}.arg.bear{border-color:var(--dn)}
+.arg h4{margin:0 0 4px;font-size:12px}
+@media(max-width:900px){.cols{grid-template-columns:1fr}.ag{grid-template-columns:1fr}}

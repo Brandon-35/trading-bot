@@ -8,6 +8,7 @@ verified_commit: 1728129
 |---|---|---|---|
 | Stack | server-brandon-service (5.189.155.78) | /opt/services/trading-bot | rsync từ repo `bot/`, docker compose |
 | live bot | container trading-bot-live-1 | - | profile `live`, MODE=live, DB /data/live.db |
+| paper v2 | containers trading-bot-paper-signal-1, trading-bot-paper-committee-1 | - | profile `paper2`, MODE=paper, STRATEGY=v2, DB /data/paper_signal.db, /data/paper_committee.db; start: `docker compose --profile paper2 up -d --build paper-signal paper-committee` |
 | dashboard | container trading-bot-dashboard-1 | 127.0.0.1:8090, edge :8080 | trang đăng nhập + cookie phiên ký HMAC (7 ngày) |
 | Volume | docker volume trading-bot_data | /data | SQLite mỗi bot |
 | Edge | Caddy `/opt/edge/caddy-sites/trading-bot.caddy` | trade.brandondev.online | repo server-services |

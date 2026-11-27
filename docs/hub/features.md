@@ -18,3 +18,8 @@ verified_commit: bc3a991
 | dashboard | Tab Tài khoản: lời/lỗ toàn bộ vòng đời Futures (file xuất Binance từ 2019 + API), theo tháng, theo cặp | shipped | 2026-11-27 |
 | bot | Chỉ quản lý vị thế/lệnh của chính bot (clientOrderId `x-cvBPrNm9`); lệnh tay không bị đụng | shipped | 2026-11-27 |
 | bot | Chạy tiền thật 24/7 (service `live`) | shipped | 2026-11-27 |
+| bot | Bộ backtest có phí (`python -m trader.backtest`), 4 loại tín hiệu, cổng lợi thế ≥ +0,10R | shipped | 2026-11-27 |
+| bot | v2: quét 30 altcoin mỗi 15 phút, tín hiệu pullback 4h, lọc đám đông (funding + long/short) | building | - |
+| bot | Hội đồng AI: 3 phân tích → bull/bear tranh luận → lead DeepSeek chốt, trần $0,10/ngày | building | - |
+| bot | Quản lý vốn v2: 2%/lệnh đến khi chứng minh lợi thế rồi 3%, tổng rủi ro ≤ 10%, thanh lý xa ≥ 2× SL, chốt nửa 2R + trailing | building | - |
+| dashboard | Tab "Thử nghiệm v2" (so sánh 2 nhánh paper) và "Hội đồng AI" (biên bản tranh luận) | shipped | 2026-11-27 |

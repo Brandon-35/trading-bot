@@ -5,6 +5,7 @@ MODE=paper (default) | demo | live. Live also needs LIVE_CONFIRM=I-ACCEPT-REAL-M
 `python -m trader.main --once` runs one decision cycle and exits (smoke test).
 """
 import logging
+import math
 import os
 import sys
 import time
@@ -14,7 +15,8 @@ from .exchange import Binance, Paper, make_ccxt
 from .llm import LLM
 from .market import snapshot
 from .news import headlines
-from .risk import Limits, halt_reason, size, validate
+from .risk import (Limits, V2Limits, check_caps, halt_reason, open_risk, pick_leverage, risk_pct, size, size_v2,
+                   validate)
 from .store import Store
 
 log = logging.getLogger("bot")
@@ -160,6 +162,307 @@ class Bot:
                     f"LLM cost to date ${cost:.2f}")
 
 
+class BotV2(Bot):
+    """Signal scan (+ optional LLM committee) with code-owned sizing, maker-first entries, partial TP and a trailing stop.
+
+    `signals` / `committee` are the modules (injected so tests can fake them). Per-position state (stop, ATR, TP1 done,
+    high-water mark) lives in `self.state`, persisted as a v2_state event so a restart keeps trailing.
+    """
+    TRAIL_ATR, MIN_STEP_ATR = 2.5, 0.1
+
+    def __init__(self, broker, store: Store, limits: V2Limits, mode: str, arm: str, signals, committee=None,
+                 budget=None, signal: str | None = None, universe_n: int = 10):
+        super().__init__(broker, None, store, limits, mode)
+        self.arm, self.signals, self.committee, self.budget = arm, signals, committee, budget
+        self.signal, self.universe_n, self._uni = signal, universe_n, None
+        self.state: dict = (store.last("v2_state") or {}).get("pos", {})
+
+    def _save_state(self):
+        self.store.log("v2_state", pos=self.state)
+
+    def mine(self, positions: dict) -> dict:
+        """Bot-owned positions on ANY symbol (the universe moves); hand positions are left strictly alone."""
+        out, self.foreign = {}, set()
+        for s, p in positions.items():
+            if self.owned(s, p):
+                out[s] = p
+            else:
+                self.foreign.add(s)
+        return out
+
+    def base(self) -> float:
+        """The bot's own money, never the wallet (hand trades move the wallet)."""
+        if self.mode == "paper":
+            return self.broker.equity()
+        return sync.values(self.store.db)["futures_value"]
+
+    def reconcile(self, positions: dict):
+        """A bot position needs a bot stop covering its full remaining qty (a TP is optional: v2 after TP1 has
+        none). Unprotected -> closed at market. Orders left behind by a vanished position -> cancelled."""
+        for s, p in self.mine(positions).items():
+            cover = self.broker.stop_cover(s)
+            if cover < p["qty"] * (1 - 1e-6):
+                self.broker.close(s)
+                self.store.log("reconcile_close", symbol=s, cover=cover, qty=p["qty"])
+                notify.send(f"⚠️ {s}: stop covers {cover} of {p['qty']}, closed at market")
+        for s in list(self.state):
+            if s not in positions:
+                n = self.broker.protective_count(s)
+                if n:
+                    self.broker.cancel_protective(s)
+                    self.store.log("reconcile_cancel", symbol=s, orders=n)
+                del self.state[s]
+                self._save_state()
+
+    # ---- stops ------------------------------------------------------------------------------------------------
+    def _set_stop(self, s, st, target, qty, price, why) -> bool:
+        """Move the stop to `target` (new order first, old cancelled after). A target already breached by the
+        price means the stop would fire at once, so the position is closed instead."""
+        sg = 1 if st["side"] == "long" else -1
+        if (price - target) * sg <= 0:
+            self.broker.close(s)
+            self.store.log("stop_breach_close", symbol=s, target=target, price=price, why=why)
+            notify.send(f"{s}: price {price} through the new stop {target}, closed ({why})")
+            return False
+        try:
+            self.broker.move_stop(s, target, qty)
+        except Exception as e:
+            log.warning("move_stop %s: %s", s, notify.redact(f"{type(e).__name__}: {e}")[:200])
+            return False
+        st["stop"] = target
+        self.store.log("stop_move", symbol=s, stop=target, why=why)
+        self._save_state()
+        return True
+
+    def trail(self):
+        """Every pass: detect TP1 (qty shrank) -> stop to breakeven on the remaining qty; then trail at 2.5 ATR,
+        only ever in the favourable direction."""
+        positions = self.broker.positions()
+        for s, st in list(self.state.items()):
+            p = positions.get(s)
+            if not p:
+                continue
+            try:
+                price = float(self.broker.data.fetch_ticker(s)["last"])
+            except Exception:
+                continue
+            sg = 1 if st["side"] == "long" else -1
+            st["extreme"] = max(st["extreme"], price) if sg > 0 else min(st["extreme"], price)
+            first = False
+            if not st["tp1_done"] and st["tp_qty"] > 0 and p["qty"] <= st["qty0"] - 0.9 * st["tp_qty"]:
+                st["tp1_done"] = first = True
+                self.store.log("tp1", symbol=s, qty=p["qty"])
+            if not st["tp1_done"]:
+                continue
+            cand = st["extreme"] - sg * self.TRAIL_ATR * st["atr"]
+            target = max(st["stop"], st["entry"], cand) if sg > 0 else min(st["stop"], st["entry"], cand)
+            if first or (target - st["stop"]) * sg >= self.MIN_STEP_ATR * st["atr"]:
+                self._set_stop(s, st, target, p["qty"], price, "breakeven" if first else "trail")
+
+    def manage_hourly(self):
+        """Committee arm only: the model may tighten a stop or close, never widen."""
+        if self.arm != "committee":
+            return
+        positions = self.broker.positions()
+        for s, st in list(self.state.items()):
+            p = positions.get(s)
+            if not p or (self.budget and not self.budget.ok()):
+                continue
+            price = float(self.broker.data.fetch_ticker(s)["last"])
+            sg = 1 if st["side"] == "long" else -1
+            pos = {"symbol": s, "side": st["side"], "qty": p["qty"], "entry": st["entry"], "stop": st["stop"],
+                   "tp": st["tp"], "atr": st["atr"], "mark": price, "tp1_done": st["tp1_done"],
+                   "r_now": (price - st["entry"]) * sg / st["dist0"], "hours_open": (time.time() * 1000 - st["opened"]) / 3.6e6}
+            res = self.committee.manage(pos, {"time_utc": time.strftime("%Y-%m-%d %H:%M", time.gmtime())}, self.store)
+            self.store.log("manage", symbol=s, **{k: res.get(k) for k in ("action", "new_stop", "rationale")})
+            if res.get("action") == "close":
+                self.broker.close(s)
+                notify.send(f"committee close {s}: {res.get('rationale', '')}"[:300])
+            elif res.get("action") == "tighten":
+                try:
+                    ns = float(res["new_stop"])
+                except (KeyError, TypeError, ValueError):
+                    continue
+                if (ns - st["stop"]) * sg > 0:           # strictly tighter than the current stop
+                    self._set_stop(s, st, ns, p["qty"], price, "committee")
+
+    # ---- entries ----------------------------------------------------------------------------------------------
+    def universe(self) -> list[str]:
+        day = time.strftime("%Y-%m-%d", time.gmtime())
+        if not self._uni or self._uni[0] != day:
+            self._uni = (day, self.signals.universe(self.broker.data, self.universe_n))
+        return self._uni[1]
+
+    def closed_r(self) -> list[float]:
+        return [e["r"] for e in self.store.all("trade_close") if e.get("r") is not None]
+
+    def entries_today(self) -> int:
+        t = time.gmtime()
+        midnight = int(time.time()) - (t.tm_hour * 3600 + t.tm_min * 60 + t.tm_sec)
+        return self.store.db.execute("SELECT COUNT(*) FROM events WHERE kind='trade_open' AND ts >= ?",
+                                     (midnight,)).fetchone()[0]
+
+    @staticmethod
+    def _news() -> list:
+        try:
+            return headlines()
+        except Exception:
+            return []
+
+    def scan_cycle(self):
+        if halted(self.store):
+            return
+        all_pos = self.broker.positions()
+        mine = self.mine(all_pos)
+        base = self.base()
+        day_start = self.day_start_equity(base)
+        self.store.log("equity", equity=base, positions=mine)
+        stop = halt_reason(base, day_start, self.limits)
+        if stop == "floor":
+            for s in list(mine):
+                self.broker.close(s)
+            self.store.log("halt", equity=base)
+            notify.send(f"🛑 FULL STOP: base {base:.2f} < {self.limits.floor_equity}. Positions closed. "
+                        "Run `python -m trader.main --clear-halt` to resume.")
+            return
+        if stop == "daily":
+            return
+        syms = self.universe()
+        self.signals.store_derivs(self.broker.data, self.store.db, syms)
+        sig = self.signal or self.signals.best_signal() or "breakout"
+        for setup in self.signals.scan(self.broker.data, syms, sig, "4h"):
+            self.enter(setup, base)
+
+    def enter(self, setup: dict, base: float):
+        s, side, price, atr, bar = setup["symbol"], setup["side"], setup["price"], setup["atr"], setup["bar_time"]
+        seen = self.store.db.execute(
+            "SELECT 1 FROM events WHERE kind='setup' AND json_extract(data,'$.symbol')=? AND json_extract(data,'$.bar_time')=?",
+            (s, bar)).fetchone()
+        if seen:
+            return                                  # the same closed bar is rescanned every 15 min: act once
+        self.store.log("setup", symbol=s, bar_time=bar, side=side, signal=setup.get("signal"), price=price, atr=atr)
+        conf, why = None, ""
+        reject = lambda r: self._decision(s, side, None, None, conf, why, r)
+        if s in self.broker.positions():
+            return reject("position already open (bot or hand)")
+        if self.signals.crowded(self.store.db, s, side):
+            return reject("crowded")
+        mine = self.mine(self.broker.positions())
+        listed = [{"side": self.state[x]["side"], "risk": open_risk(
+            self.state[x]["side"], mine[x]["qty"], self.state[x]["entry"], self.state[x]["stop"])}
+            for x in mine if x in self.state]
+        if len(listed) != len(mine):                 # a position without state: risk unknown, take no more
+            return reject("bot position without state")
+        lim, today = self.limits, self.entries_today()
+        if (r := check_caps(listed, side, 0.0, today, base, lim)):
+            return reject(r)
+        mult, tp_r = (setup.get("stop_dist") or 2.0 * atr) / atr, 2.0     # the signal's own stop (2 ATR today), TP1 at 2R
+        why = "signal"
+        if self.arm == "committee":
+            if self.budget and not self.budget.ok():
+                return reject("LLM daily budget used")
+            recent = [{k: e.get(k) for k in ("symbol", "side", "r", "why")} for e in self.store.all("trade_close")[-10:]]
+            ctx = {"time_utc": time.strftime("%Y-%m-%d %H:%M", time.gmtime()), "base": round(base, 2),
+                   "news": self._news(),
+                   "open_positions": {x: {"side": self.state[x]["side"], "entry": self.state[x]["entry"],
+                                          "stop": self.state[x]["stop"]} for x in mine}}
+            res = self.committee.decide(setup, ctx, recent, self.store)
+            conf, why = res.get("confidence"), str(res.get("rationale") or "")
+            if res.get("action") != "open":
+                return reject("committee skip")
+            if res.get("side") != side:
+                return reject(f"committee side {res.get('side')} != setup {side}")
+            mult, tp_r = res.get("sl_atr"), res.get("tp_r")
+            if not (isinstance(mult, (int, float)) and isinstance(tp_r, (int, float)) and 1.0 <= mult <= 3.0
+                    and 1.0 <= tp_r <= 4.0):
+                return reject(f"committee sl_atr/tp_r out of range: {mult}/{tp_r}")
+        if not all(isinstance(v, (int, float)) and math.isfinite(v) and v > 0 for v in (price, atr)):
+            return reject("non-finite market data")
+        dist = mult * atr
+        if dist < lim.sl_min_pct * price:
+            return reject(f"stop too tight: {dist:.6g} < {lim.sl_min_pct:.1%} of price")
+        sg = 1 if side == "long" else -1
+        sl, tp = price - sg * dist, price + sg * tp_r * dist
+        rp = risk_pct(self.closed_r(), lim)
+        m = self.broker.market(s)
+        qty, r = size_v2(base, rp, dist, price, m["precision"]["amount"], m["limits"]["amount"]["min"] or 0,
+                         m["limits"]["cost"]["min"] or 0, lim)
+        if r:
+            return reject(r)
+        if (r := check_caps(listed, side, qty * dist, today, base, lim)):
+            return reject(r)
+        used = sum(self.state[x]["entry"] * mine[x]["qty"] / self.state[x]["lev"] for x in mine)
+        lev, r = pick_leverage(qty * price, min(self.broker.free_margin(), base - used), price, dist, lim)
+        if r:
+            return reject(r)
+        try:
+            fill = self.broker.open_v2(s, side, qty, sl, tp, price, atr, lev)
+        except Exception as e:
+            notify.send(f"⚠️ {s} entry failed, flattened: {type(e).__name__}: {e}"[:300])
+            return reject(f"order failed: {type(e).__name__}")
+        if not fill:
+            return reject("entry not filled (price moved away)")
+        self.state[s] = {"side": side, "qty0": fill["qty"], "entry": fill["entry"], "stop": sl, "stop0": sl, "tp": tp,
+                         "tp_qty": fill["tp_qty"], "atr": atr, "dist0": dist, "tp1_done": False,
+                         "extreme": fill["entry"], "opened": int(time.time() * 1000), "lev": lev}
+        self._save_state()
+        self.store.log("trade_open", symbol=s, side=side, qty=fill["qty"], price=fill["entry"], sl=sl, tp=tp,
+                       tp_r=tp_r, risk_pct=rp, leverage=lev, arm=self.arm, maker=fill["maker"],
+                       risk=fill["qty"] * dist, confidence=conf)
+        self._decision(s, side, sl, tp, conf, why, None)
+        notify.send(f"{side} {fill['qty']} {s} @{fill['entry']:.6g} SL {sl:.6g} TP1 {tp:.6g} {lev}x "
+                    f"risk {rp:.1%} — {why}"[:300])
+
+    def _decision(self, s, side, sl, tp, conf, why, reject):
+        self.store.log("decision", symbol=s, action=side if reject is None else "hold", stop_loss=sl, take_profit=tp,
+                       confidence=conf, reason=why or reject, accepted=reject is None, reject=reject)
+
+
+def run_v2(mode: str, store: Store):
+    """v2 loop. Paper only for now (guarded in main): the owner must give a separate go before it trades real money."""
+    from . import signals
+    arm = os.getenv("ARM", "signal")
+    if arm not in ("signal", "committee"):
+        sys.exit(f"ARM must be signal or committee, got {arm!r}")
+    committee = budget = None
+    if arm == "committee":
+        from . import committee
+        budget = committee.Budget(store)
+    limits = V2Limits(risk_pct=float(os.getenv("RISK_PCT", "0.02")),
+                      risk_pct_proven=float(os.getenv("RISK_PCT_PROVEN", "0.03")),
+                      floor_equity=float(os.getenv("FLOOR_EQUITY", "12")))
+    ex = make_ccxt(mode)
+    on_close = lambda **t: (store.log("trade_close", **t),
+                            notify.send(f"{t['why']} {t['symbol']} pnl {t['pnl']:+.3f} ({t['r']:+.2f}R)"))
+    broker = Paper(ex, 1, float(os.getenv("PAPER_START", "18.7392")), on_close,
+                   state=store.last("paper_state"), save=lambda st: store.log("paper_state", **st), funding=False)
+    bot = BotV2(broker, store, limits, mode, arm, signals, committee, budget, os.getenv("SIGNAL") or None,
+                int(os.getenv("UNIVERSE_N", "10")))
+    notify.send(f"started v2 arm={arm} mode={mode} floor={limits.floor_equity}")
+    last_day = None
+    while True:
+        try:
+            broker.tick()
+            bot.reconcile(broker.positions())
+            bot.trail()
+            now = time.time()
+            for kind, key, ready, fn in (("v2_scan", int(now // 900), now % 900 >= 5, bot.scan_cycle),
+                                         ("v2_manage", time.strftime("%Y-%m-%dT%H", time.gmtime(now)),
+                                          now % 3600 >= 5, bot.manage_hourly)):
+                done = store.last(kind)
+                if ready and (not done or done["key"] != key):
+                    store.log(kind, key=key)         # persisted first: a crash or restart cannot repeat the slot
+                    fn()
+            t = time.gmtime(now)
+            if t.tm_hour == 1 and t.tm_yday != last_day:
+                last_day = t.tm_yday
+                bot.daily_summary()
+        except Exception as e:
+            log.error("loop error: %s", notify.redact(f"{type(e).__name__}: {e}"))
+            notify.send(f"loop error: {type(e).__name__}: {e}"[:300])
+        time.sleep(20)
+
+
 def main():
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(message)s")
     for name in ("httpx", "httpx2"):   # request log lines contain URLs; the Discord webhook URL carries its token
@@ -174,6 +477,13 @@ def main():
         store.log("halt_clear")
         print("halt cleared")
         return
+    strategy = os.getenv("STRATEGY", "v1")
+    if strategy not in ("v1", "v2"):
+        sys.exit(f"STRATEGY must be v1 or v2, got {strategy!r}")
+    if strategy == "v2":
+        if mode != "paper":
+            sys.exit("STRATEGY=v2 runs in MODE=paper only until the owner gives a separate go for live")
+        return run_v2(mode, store)
     limits = Limits(leverage=int(os.getenv("LEVERAGE", "5")), risk_pct=float(os.getenv("RISK_PCT", "0.02")),
                     floor_equity=float(os.getenv("FLOOR_EQUITY", "70")))
     ex = make_ccxt(mode)

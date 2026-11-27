@@ -17,3 +17,4 @@ verified_commit: bc3a991
 | D9 | 2026-11-27 | Arena 4 model paper trước khi live | owner chuyển sang chạy live ngay | superseded |
 | D10 | 2026-11-27 | Tháng đầu chạy live với 18 USDT, `FLOOR_EQUITY=12` (~2/3 vốn, cùng tỉ lệ 70/100) | owner test 1 tháng với vốn nhỏ; BTC thường bị bỏ qua vì min notional 50 USDT > 5x của 18 USDT | active |
 | D11 | 2026-11-27 | Lệnh của bot = clientOrderId bắt đầu `x-cvBPrNm9` và sau BOT_START; mọi số liệu bot + reconcile/floor/max_positions chỉ tính vị thế của bot | owner cũng trade tay trên cùng ví; bot không được đóng lệnh tay | active |
+| D12 | 2026-11-27 | Chiến lược v2 = tín hiệu code (pullback 4h) + hội đồng AI (3 phân tích, bull/bear, lead DeepSeek V3.2); rủi ro 2% đến khi ≥ 30 lệnh paper trung bình ≥ +0,10R rồi 3%; giữ 18,7 USDT, sàn 12, mục tiêu 120; chuyển live là quyết định riêng của owner | research: chưa có bot nhiều-AI nào lãi thật được kiểm chứng; Monte Carlo cho thấy rủi ro cao làm tăng tỉ lệ cháy | active |
