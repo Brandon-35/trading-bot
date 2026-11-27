@@ -14,3 +14,16 @@ def test_page_renders_and_escapes_llm_text(tmp_path, monkeypatch):
     html = dashboard.page()
     assert "101.50" in html and "rr too low" in html and "<polyline" in html
     assert "<script>" not in html and "&lt;script&gt;" in html
+
+
+def test_auth_requires_exact_credentials(monkeypatch):
+    import base64
+    monkeypatch.setenv("DASH_USER", "u")
+    monkeypatch.setenv("DASH_PASSWORD", "p" * 16)
+    ok = "Basic " + base64.b64encode(b"u:" + b"p" * 16).decode()
+    assert dashboard.authorized(ok)
+    assert not dashboard.authorized(None)
+    assert not dashboard.authorized("Basic " + base64.b64encode(b"u:wrong").decode())
+    assert not dashboard.authorized("Basic !!!")
+    monkeypatch.setenv("DASH_PASSWORD", "")
+    assert not dashboard.authorized("Basic " + base64.b64encode(b"u:").decode())

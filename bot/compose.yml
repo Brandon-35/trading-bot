@@ -87,16 +87,23 @@ services:
       OPENROUTER_MODEL: ${OPENROUTER_MODEL:-anthropic/claude-haiku-5.5}
       OPENROUTER_PRICE_IN: ${OPENROUTER_PRICE_IN:-0.10}
       OPENROUTER_PRICE_OUT: ${OPENROUTER_PRICE_OUT:-0.50}
-  dashboard:   # read-only status page; server-local port only, reach it with an SSH tunnel
+  dashboard:   # read-only status page at https://trade.brandondev.online (edge Caddy), Basic auth in the app
     image: trading-bot:latest
     build: .
     restart: unless-stopped
     command: ["python", "-m", "trader.dashboard"]
     environment:
       TZ: Asia/Ho_Chi_Minh
+      DASH_USER: ${DASH_USER:-brandon}
+      DASH_PASSWORD: ${DASH_PASSWORD:-}
     ports: ["127.0.0.1:8090:8080"]
+    networks: [default, edge]
     volumes:
       - data:/data
+
+networks:
+  edge:
+    external: true
 
 volumes:
   data:

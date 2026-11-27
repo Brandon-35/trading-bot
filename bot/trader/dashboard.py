@@ -1,8 +1,10 @@
 """Read-only status page over the bot databases: python -m trader.dashboard  (port 8080, DASH_DBS=/data/live.db,...)
 
-No auth: compose publishes it on the server's 127.0.0.1 only; reach it through an SSH tunnel.
+Public behind Caddy (trade.brandondev.online): HTTP Basic auth with DASH_USER / DASH_PASSWORD is mandatory.
 """
+import base64
 import glob
+import hmac
 import html
 import os
 import time
@@ -75,8 +77,24 @@ table{{border-collapse:collapse;width:100%}}td,th{{border-bottom:1px solid #1f2a
 th{{color:#94a3b8;font-weight:500}}</style><h1>trading-bot</h1><p class=muted>times UTC+7 · refreshes every 60 s</p>{body}"""
 
 
+def authorized(header: str | None) -> bool:
+    user, pw = os.getenv("DASH_USER", ""), os.getenv("DASH_PASSWORD", "")
+    if not (user and pw and header and header.startswith("Basic ")):
+        return False
+    try:
+        given = base64.b64decode(header[6:], validate=True)
+    except ValueError:
+        return False
+    return hmac.compare_digest(given, f"{user}:{pw}".encode())
+
+
 class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
+        if not authorized(self.headers.get("Authorization")):
+            self.send_response(401)
+            self.send_header("WWW-Authenticate", 'Basic realm="trading-bot"')
+            self.end_headers()
+            return
         if self.path != "/":
             self.send_error(404)
             return
@@ -92,4 +110,6 @@ class Handler(BaseHTTPRequestHandler):
 
 
 if __name__ == "__main__":
+    if len(os.getenv("DASH_PASSWORD", "")) < 16:
+        raise SystemExit("DASH_PASSWORD must be set (16+ chars)")
     ThreadingHTTPServer(("0.0.0.0", 8080), Handler).serve_forever()
