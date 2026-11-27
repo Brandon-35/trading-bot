@@ -90,6 +90,11 @@ def authorized(header: str | None) -> bool:
 
 class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
+        if self.path == "/health":   # public liveness probe, no data
+            self.send_response(200)
+            self.end_headers()
+            self.wfile.write(b"ok")
+            return
         if not authorized(self.headers.get("Authorization")):
             self.send_response(401)
             self.send_header("WWW-Authenticate", 'Basic realm="trading-bot"')
