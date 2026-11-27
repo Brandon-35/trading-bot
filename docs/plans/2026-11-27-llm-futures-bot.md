@@ -710,3 +710,7 @@ Operational milestones (weeks later, tracked on the GitHub issue, not ticked in 
 - Owner chose "live now" on the report page (no demo, no paper). Server `.env` written (600): BINANCE_* + LIVE_CONFIRM; no LLM key given yet.
 - OpenRouter added as provider (`OPENROUTER_API_KEY`, default model `anthropic/claude-haiku-5.5`, override `OPENROUTER_MODEL`).
 - Futures wallet is empty (spot USDT ~0): AC5–AC7 live order check and the live start wait for 100 USDT in USDⓈ-M Futures and one LLM key.
+
+## Report — 2026-11-27T05:49:04Z
+- action: submit
+- inputs provided: OPENROUTER_API_KEY (values stored outside the docs)

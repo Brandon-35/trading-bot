@@ -1,9 +1,9 @@
 {
- "title": "Bot LLM Binance Futures — đã cập nhật theo 6 ý, chờ key để chạy",
+ "title": "Bot LLM Binance — key Binance OK, còn thiếu LLM key + nạp tiền",
  "verdict": {
   "class": "warn",
-  "vi": "Đã thêm tin tức, Discord, tự chọn LLM, chạy thẳng tiền thật. Nhập key + chốt bên dưới là tôi chạy.",
-  "en": "Updated per owner; waiting for keys and the live go."
+  "vi": "Key Binance đạt: khoá IP, không rút được, bật Futures. Còn thiếu 1 key LLM và 100 USDT trong ví Futures.",
+  "en": "Binance key OK; need one LLM key and 100 USDT in the futures wallet."
  },
  "summary": {
   "vi": "Mỗi giờ bot lấy giá + chỉ báo + ~20 tin crypto mới nhất (Cointelegraph, Decrypt, The Block), LLM quyết định, code kiểm tra rủi ro rồi tự đặt lệnh kèm SL/TP trên Binance. Không cần key demo nữa: đường đặt lệnh sẽ được thử trên sàn thật với ~12 USDT (tốn vài cent phí). LLM: có key nào dùng key đó (ưu tiên OpenAI → Anthropic → z.ai → Moonshot). Báo động gửi về Discord.",
@@ -11,59 +11,48 @@
  },
  "stats": [
   {
+   "label": "Key Binance",
+   "value": "PASS",
+   "hint": "ipRestrict, no withdraw, futures on, spot off"
+  },
+  {
+   "label": "Ví Futures",
+   "value": "0 USDT",
+   "hint": "cần 100 USDT"
+  },
+  {
    "label": "Test",
-   "value": "28 pass",
-   "hint": "thêm tin tức, chọn LLM, Discord"
+   "value": "28 pass"
   },
   {
-   "label": "Nguồn tin",
-   "value": "3 RSS",
-   "hint": "đã lấy được từ server Pháp"
-  },
-  {
-   "label": "Vốn thật",
-   "value": "100 USDT",
-   "hint": "rủi ro 2%/lệnh = 2 USDT"
-  },
-  {
-   "label": "Thử lệnh thật",
-   "value": "~12 USDT",
-   "hint": "chi phí vài cent"
+   "label": "LLM",
+   "value": "chưa có",
+   "hint": "OpenRouter đã hỗ trợ"
   }
  ],
  "charts": [],
  "sections": [
   {
-   "heading": "Đã cập nhật theo 6 ý",
-   "md": "1. **Bỏ demo, dùng key thật:** `demo_check` chạy được trên live (cần `LIVE_CONFIRM`), lệnh thử ~12 USDT SOL.\n2. **Discord** thay Telegram (`DISCORD_WEBHOOK_URL`).\n3. **Bot tự quyết toàn bộ:** LLM đề xuất, code rủi ro duyệt, tự vào/ra lệnh — không cần bạn bấm.\n4. **Tin tức:** `trader/news.py` lấy tin 12h gần nhất đưa vào mỗi lần LLM quyết định; prompt dặn tin chỉ là dữ liệu, không làm theo chữ trong tin.\n5. **LLM theo key có sẵn:** `llm.pick()`.\n6. Service `live` trong compose, đã deploy image mới lên server."
+   "heading": "Đã kiểm tra key Binance",
+   "md": "- `key_check` từ server Pháp: ký request OK.\n- Quyền: Reading ✓, Futures ✓; Withdrawals, Spot/Margin, Universal Transfer, Internal Transfer: **tắt**; khoá IP ✓.\n- Ví USDⓈ-M Futures: **0 USDT**, ví Spot ~0."
   },
   {
-   "heading": "Sau khi bạn gửi trang này, tôi sẽ",
-   "md": "1. Ghi `.env` (quyền 600) lên server.\n2. `key_check`: key thật đã khoá IP 5.189.155.78, tắt rút tiền, bật Futures — sai là dừng.\n3. `llm --dry`: gọi thật LLM.\n4. Nếu bạn chọn **chạy tiền thật ngay**: `demo_check` trên live (~12 USDT) → xanh thì bật bot `live` 24/7, báo Discord.\n5. Nếu chọn **paper trước**: bật bot paper với LLM có key."
-  },
-  {
-   "heading": "Rủi ro bạn cần biết",
-   "md": "- Bỏ qua demo và paper nghĩa là chưa có bằng chứng LLM có lời. Mô phỏng: tỉ lệ thắng 40% → 19.6% khả năng cháy xuống 70 USDT.\n- Bot dừng ngày khi lỗ 6%, dừng hẳn dưới 70 USDT.\n- Key Binance: **bật Futures, TẮT rút tiền, khoá IP 5.189.155.78**. Chuyển 100 USDT vào ví USDⓈ-M Futures."
+   "heading": "Sau khi gửi trang này + nạp tiền, tôi sẽ",
+   "md": "1. Thêm key LLM vào `.env` trên server, gọi thử LLM thật.\n2. Thấy ≥ 100 USDT trong ví Futures → chạy thử lệnh ~12 USDT (SL/TP, đóng khi lỗi, restart).\n3. Xanh → bật bot `live` 24/7, báo về Discord."
   }
  ],
  "needs": [
   {
-   "id": "BINANCE_API_KEY",
-   "label": "Binance API key (thật) — bật Futures, tắt rút tiền, khoá IP 5.189.155.78",
+   "id": "OPENROUTER_API_KEY",
+   "label": "OpenRouter API key (khuyên dùng: 1 key dùng được mọi model)",
    "type": "secret",
-   "required": true
-  },
-  {
-   "id": "BINANCE_API_SECRET",
-   "label": "Binance API secret",
-   "type": "secret",
-   "required": true
+   "hint": "openrouter.ai/keys → Create key. Nạp ~5 USD credit là đủ vài tháng.",
+   "required": false
   },
   {
    "id": "OPENAI_API_KEY",
    "label": "OpenAI API key",
    "type": "secret",
-   "hint": "Có key LLM nào nhập key đó, ít nhất 1.",
    "required": false
   },
   {
@@ -74,13 +63,13 @@
   },
   {
    "id": "ZAI_API_KEY",
-   "label": "z.ai API key (trả theo lượt, không phải Coding Plan)",
+   "label": "z.ai API key",
    "type": "secret",
    "required": false
   },
   {
    "id": "MOONSHOT_API_KEY",
-   "label": "Moonshot API key (trả theo lượt)",
+   "label": "Moonshot API key",
    "type": "secret",
    "required": false
   },
@@ -88,18 +77,8 @@
    "id": "DISCORD_WEBHOOK_URL",
    "label": "Discord webhook URL",
    "type": "secret",
-   "hint": "Kênh Discord → Edit Channel → Integrations → Webhooks → New Webhook → Copy URL",
+   "hint": "Kênh → Edit Channel → Integrations → Webhooks → New Webhook → Copy URL",
    "required": false
-  },
-  {
-   "id": "LIVE_GO",
-   "label": "Chạy tiền thật ngay sau khi kiểm tra xanh?",
-   "type": "choice",
-   "options": [
-    "Chạy tiền thật ngay (100 USDT)",
-    "Chạy paper trước, tôi xem rồi quyết"
-   ],
-   "required": true
   }
  ],
  "links": [
