@@ -256,6 +256,22 @@ def store_derivs(ex, db, symbols: list[str]) -> None:
             continue
 
 
+def derivs(db, symbol: str) -> dict:
+    """Latest stored funding / long-short / taker ratio and the open-interest change over the last ~4 h."""
+    try:
+        rows = _conn(db).execute("SELECT time, funding, oi, ls, taker FROM deriv WHERE symbol = ? AND time >= "
+                                 "(SELECT MAX(time) FROM deriv WHERE symbol = ?) - 4 * 3600 * 1000 ORDER BY time",
+                                 (symbol, symbol)).fetchall()
+    except Exception:
+        return {}
+    if not rows:
+        return {}
+    _, f, oi, ls, tk = rows[-1]
+    oi0 = rows[0][2]
+    chg = round((oi / oi0 - 1) * 100, 2) if oi and oi0 and len(rows) > 1 else None
+    return {"funding": f, "oi": oi, "oi_change_pct_4h": chg, "ls": ls, "taker": tk}
+
+
 def crowded(db, symbol: str, side: str) -> bool:
     try:
         row = _conn(db).execute("SELECT funding, ls FROM deriv WHERE symbol = ? ORDER BY time DESC LIMIT 1",

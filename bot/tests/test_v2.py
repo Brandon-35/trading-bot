@@ -244,11 +244,17 @@ def test_paper_old_saved_state_without_v2_fields_still_loads():
 
 # ---- BotV2 ------------------------------------------------------------------------------------------------------
 
+@pytest.fixture(autouse=True)
+def _no_network(monkeypatch):
+    monkeypatch.setattr(m.BotV2, "_fear_greed", staticmethod(lambda: 42))
+
+
 class Sig:
     def __init__(self, setups=(), crowd=False):
         self.setups, self.crowd = list(setups), crowd
     def universe(self, ex, n=10): return [S]
     def store_derivs(self, ex, db, syms): pass
+    def derivs(self, db, s): return {"funding": 0.0001}
     def best_signal(self): return None
     def crowded(self, db, s, side): return self.crowd
     def scan(self, ex, syms, signal, tf): return self.setups
@@ -537,3 +543,12 @@ def test_committee_is_not_called_for_a_setup_that_cannot_be_sized(tmp_path):
     x.enter(setup(price=1.0, atr=0.1), x.base())       # even 1 ATR: 0.3748 / 0.1 = 3.7 USDT < 5 min notional
     assert not called and not b.calls
     assert x.store.last("decision")["reject"].startswith("unsizable before committee")
+
+
+def test_committee_gets_derivatives_and_fear_greed(tmp_path):
+    seen = []
+    class C:
+        def decide(self, setup, ctx, recent, store): seen.append(ctx); return {"action": "skip"}
+    x = bot2(FB(), tmp_path, arm="committee", committee=C())
+    x.enter(setup(), 100.0)
+    assert seen[0]["derivs"] == {"funding": 0.0001} and seen[0]["fear_greed"] == 42
