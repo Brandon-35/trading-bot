@@ -1,7 +1,7 @@
 ---
 section: costs
 updated: 2026-11-28
-verified_commit: 1728129
+verified_commit: af4e993
 ---
 
 | Item | Category | USD | Period | Shared |

@@ -1,7 +1,7 @@
 ---
 section: decisions
 updated: 2026-11-28
-verified_commit: 356f931
+verified_commit: af4e993
 ---
 
 | Id | Date | Decision | Reason | Status |
