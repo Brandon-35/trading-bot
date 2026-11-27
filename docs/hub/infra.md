@@ -1,7 +1,7 @@
 ---
 section: infra
 updated: 2026-11-27
-verified_commit: 1728129
+verified_commit: 356f931
 ---
 
 | Component | Where | Address | Notes |
