@@ -31,14 +31,16 @@ function px(v) { return !num(v) ? '-' : Math.abs(v) >= 1 ? fnum(v, pxDec(v)) : S
 let unit = localStorage.getItem('unit') === 'vnd' ? 'vnd' : 'usdt';
 let fx = null;
 const rate = () => (unit === 'vnd' && fx && fx.usdt_vnd) || 0;
-// o: sign (+/- prefix), d (USDT decimals), unit (append "USDT"), compact (VND >= 1 million as "x tr")
+// Vietnamese short scale for big VND amounts: 2,47 tỷ · 17,2 triệu
+function vndShort(a) { return a >= 1e9 ? nf(0, 2).format(a / 1e9) + ' tỷ' : a >= 1e6 ? nf(0, 1).format(a / 1e6) + ' triệu' : nf(0, 0).format(a); }
+// o: sign (+/- prefix), d (USDT decimals), unit (append "USDT"), compact (big VND as "2,47 tỷ")
 function money(v, o) {
   o = o || {};
   if (!num(v)) return '-';
   const r = rate();
   if (r) {
     const x = v * r, a = Math.abs(x);
-    return signOf(Math.round(x) === 0 ? 0 : x, o.sign) + (o.compact && a >= 1e6 ? nf(0, 1).format(a / 1e6) + ' tr' : nf(0, 0).format(a)) + ' ₫';
+    return signOf(Math.round(x) === 0 ? 0 : x, o.sign) + (o.compact ? vndShort(a) : nf(0, 0).format(a)) + ' ₫';
   }
   const a = Math.abs(v), d = o.d != null ? o.d : a > 0 && a < 1 ? 4 : 2;
   return signOf(v, o.sign) + nf(d, d).format(a) + (o.unit ? ' USDT' : '');
@@ -47,7 +49,7 @@ function axisMoney(v) { // chart price-scale label
   const r = rate();
   if (!r) return fnum(v, 2);
   const x = v * r, a = Math.abs(x);
-  return (x < 0 ? MINUS : '') + (a >= 1e6 ? nf(0, 1).format(a / 1e6) + ' tr' : nf(0, 0).format(a));
+  return (x < 0 ? MINUS : '') + vndShort(a);
 }
 function cls(v) { return !num(v) || v === 0 ? '' : v > 0 ? 'up' : 'dn'; }
 const pnl = (v, o) => el('span', cls(v), money(v, Object.assign({ sign: true }, o)));
@@ -630,7 +632,9 @@ function icon(name, size) {
   return s;
 }
 const MAIN_NAV = [['overview', 'Tổng quan'], ['positions', 'Vị thế'], ['history', 'Lịch sử'], ['v2', 'Thử nghiệm']];
-const MORE_NAV = [['decisions', 'Quyết định AI'], ['account', 'Tài khoản'], ['committee', 'Hội đồng AI'], ['system', 'Hệ thống']];
+const MORE_NAV = [['account', 'Tài khoản'], ['system', 'Hệ thống']];
+// tabs that share one nav entry, shown as a segmented sub-nav: tab -> [parent nav entry, sub-nav label]
+const SUB = { history: ['history', 'Lệnh đã đóng'], decisions: ['history', 'Quyết định AI'], v2: ['v2', 'So sánh 2 bot'], committee: ['v2', 'Hội đồng AI'] };
 function buildNav() {
   const nav = $('#bnav'), sheet = $('#sheet');
   MAIN_NAV.forEach((t) => {
@@ -659,9 +663,15 @@ const loaders = { overview: loadOverview, positions: loadCandles, history: loadH
 function currentTab() { const h = location.hash.slice(1); return TABS.includes(h) ? h : 'overview'; }
 function route() {
   const t = currentTab();
+  const parent = SUB[t] ? SUB[t][0] : t;
   TABS.forEach((n) => { $('#tab-' + n).classList.toggle('on', n === t); });
-  document.querySelectorAll('#tabs a, #bnav a, #sheet a').forEach((a) => a.classList.toggle('on', a.dataset.tab === t));
-  $('#moreBtn').classList.toggle('on', MORE_NAV.some((x) => x[0] === t));
+  document.querySelectorAll('#tabs a, #bnav a, #sheet a').forEach((a) => a.classList.toggle('on', a.dataset.tab === parent));
+  $('#moreBtn').classList.toggle('on', MORE_NAV.some((x) => x[0] === parent));
+  const sub = $('#subnav'); sub.textContent = '';
+  Object.keys(SUB).filter((k) => SUB[k][0] === parent).forEach((k) => {
+    const a = el('a', k === t ? 'on' : null, SUB[k][1]); a.href = '#' + k; if (k === t) a.setAttribute('aria-current', 'page'); sub.appendChild(a);
+  });
+  sub.hidden = !sub.firstChild;
   const on = document.querySelector('#tabs a.on');   // desktop nav may scroll sideways: keep the open tab visible
   if (on) requestAnimationFrame(() => on.scrollIntoView({ block: 'nearest', inline: 'nearest' }));
   loaders[t]().catch((e) => { if (e.message !== 'auth') console.error(e); });
