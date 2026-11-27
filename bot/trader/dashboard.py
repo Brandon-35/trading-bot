@@ -199,7 +199,7 @@ def api_candles(db, symbol: str, tf: str) -> dict:
 
 def api_account(db) -> dict:
     empty = {"coverage": {"from": None, "to": None, "sources": []},
-             "totals": dict.fromkeys(("transfer_in", "transfer_out", "realized", "fees", "funding", "net"), 0),
+             "totals": dict.fromkeys(("transfer_in", "transfer_out", "realized", "fees", "funding", "liquidation", "other", "net"), 0),
              "monthly": [], "by_symbol": [], "fills": []}
     if not db:
         return empty
@@ -207,11 +207,13 @@ def api_account(db) -> dict:
     lo, hi = db.execute(f"SELECT MIN(time_ms), MAX(time_ms) FROM income WHERE {sync.INC_OK}").fetchone()
     srcs = [r[0] for r in db.execute(f"SELECT DISTINCT source FROM income WHERE {sync.INC_OK}")]
     col = {"REALIZED_PNL": 0, "COMMISSION": 1, "FUNDING_FEE": 2}
-    tot, mon, sym = {"transfer_in": 0.0, "transfer_out": 0.0}, {}, {}
+    tot, mon, sym = {"transfer_in": 0.0, "transfer_out": 0.0, "liquidation": 0.0}, {}, {}
     for typ, s, amt, ms in rows:
         if typ == "TRANSFER":
             tot["transfer_in" if amt > 0 else "transfer_out"] += abs(amt)
             continue
+        if typ == "INSURANCE_CLEAR":   # liquidation fee taken by the insurance fund
+            tot["liquidation"] += amt
         i = col.get(typ, 3)   # other trading income (e.g. INSURANCE_CLEAR) counts into net only
         for bucket in (mon.setdefault(_day(ms / 1000)[:7], [0.0] * 4), sym.setdefault(s, [0.0] * 4)):
             bucket[i] += amt
@@ -223,6 +225,7 @@ def api_account(db) -> dict:
     tot.update(realized=sum(v[0] for v in mon.values()), fees=sum(v[1] for v in mon.values()),
                funding=sum(v[2] for v in mon.values()))
     tot["net"] = sum(sum(v) for v in mon.values())
+    tot["other"] = tot["net"] - tot["realized"] - tot["fees"] - tot["funding"] - tot["liquidation"]
     return {"coverage": {"from": lo / 1000 if lo else None, "to": hi / 1000 if hi else None, "sources": srcs},
             "totals": tot,
             "monthly": [[m, *v[:3], sum(v)] for m, v in sorted(mon.items())],
