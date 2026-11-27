@@ -1,7 +1,7 @@
 ---
 section: changelog
 updated: 2026-11-27
-verified_commit: 6fbd250
+verified_commit: f673cf5
 ---
 
 ## 0.1.0 — 2026-11-27
