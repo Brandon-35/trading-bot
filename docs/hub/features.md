@@ -23,3 +23,4 @@ verified_commit: 356f931
 | bot | Hội đồng AI: 3 phân tích → bull/bear tranh luận → lead DeepSeek chốt, trần $0,10/ngày | building | - |
 | bot | Quản lý vốn v2: 2%/lệnh đến khi chứng minh lợi thế rồi 3%, tổng rủi ro ≤ 10%, thanh lý xa ≥ 2× SL, chốt nửa 2R + trailing | building | - |
 | dashboard | Tab "Thử nghiệm v2" (so sánh 2 nhánh paper) và "Hội đồng AI" (biên bản tranh luận) | shipped | 2026-11-27 |
+| dashboard | Giao diện điện thoại: thanh tab dưới đáy + bảng thành thẻ; tab "Hệ thống" (báo cáo đầy đủ); quy đổi VND theo tỉ giá Binance P2P (`/api/fx`); số định dạng vi-VN | shipped | 2026-11-27 |

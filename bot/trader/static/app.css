@@ -1,7 +1,7 @@
-:root{--bg:#0b0e11;--panel:#181a20;--panel2:#1e2329;--line:#2b3139;--tx:#eaecef;--mut:#848e9c;--up:#0ecb81;--dn:#f6465d;--acc:#fcd535;
+:root{--hdr:52px;--bg:#0b0e11;--panel:#181a20;--panel2:#1e2329;--line:#2b3139;--tx:#eaecef;--mut:#848e9c;--up:#0ecb81;--dn:#f6465d;--acc:#fcd535;
 --font:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
 *{box-sizing:border-box}
-html{color-scheme:dark}
+html{color-scheme:dark;scrollbar-gutter:stable}
 body{margin:0;background:var(--bg);color:var(--tx);font:13px/1.45 var(--font);font-variant-numeric:tabular-nums}
 a{color:inherit;text-decoration:none}
 .up{color:var(--up)}.dn{color:var(--dn)}.mut{color:var(--mut)}
@@ -63,18 +63,6 @@ tfoot td{font-weight:600;background:var(--panel2)}
 .foot a{color:var(--acc)}
 .sel{background:var(--panel2);color:var(--tx);border:1px solid var(--line);border-radius:4px;padding:5px 8px;font:inherit}
 @media(max-width:900px){.grid{grid-template-columns:repeat(2,1fr)}}
-@media(max-width:600px){
- main{padding:10px}
- .top{gap:8px;padding:0 10px;flex-wrap:wrap;height:auto;padding-top:8px}
- .tabs{order:3;flex-basis:100%}
- .tabs a{padding:10px}
- .right{margin-left:auto}
- .live #liveTxt{font-size:11px}
- .grid{gap:8px}
- .card{padding:10px 12px}.card .v{font-size:17px}
- .chart{height:260px}.chart.lg{height:320px}
- th,td{padding:8px}
-}
 
 .hint{color:var(--mut);font-size:12px;padding:8px 16px 0;line-height:1.4}
 .card .hint{padding:6px 0 0;border-top:1px dashed var(--line);margin-top:8px}
@@ -84,9 +72,8 @@ tfoot td{font-weight:600;background:var(--panel2)}
 .logo img{display:block;border-radius:6px}
 .logo .nm{display:flex;flex-direction:column;line-height:1.15;font-weight:700;font-size:15px;color:var(--acc)}
 .logo small{font-weight:400;font-size:10px;color:var(--mut)}
-@media(max-width:600px){.logo small{display:none}.logo .nm{font-size:14px}}
 
-.cols{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+.cols{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px;margin-bottom:12px}
 .cols .grid{grid-template-columns:repeat(2,1fr);margin-bottom:0}
 .cols h3{margin:0 0 8px;font-size:14px}
 .colh{display:flex;align-items:center;gap:8px;margin-bottom:8px;font-weight:600}
@@ -110,3 +97,85 @@ tfoot td{font-weight:600;background:var(--panel2)}
 .arg.bull{border-color:var(--up)}.arg.bear{border-color:var(--dn)}
 .arg h4{margin:0 0 4px;font-size:12px}
 @media(max-width:900px){.cols{grid-template-columns:1fr}.ag{grid-template-columns:1fr}}
+
+/* ---------- unit toggle, fx strip ---------- */
+.seg{display:flex;border:1px solid var(--line);border-radius:6px;overflow:hidden}
+.seg button{font:inherit;font-weight:600;font-size:12px;background:var(--panel2);color:var(--mut);border:0;padding:6px 10px;cursor:pointer}
+.seg button.on{background:var(--acc);color:#181a20}
+.fx{color:var(--mut);font-size:12px;padding:0 0 10px}
+.card .s{overflow-wrap:anywhere}
+.card .v{overflow:hidden;text-overflow:ellipsis}
+.ph{min-width:0}
+.mut.tr{text-align:right}
+
+/* ---------- table -> cards helper (css side) ---------- */
+th.sort:focus-visible{outline:1px solid var(--acc)}
+
+/* ---------- system report tab ---------- */
+.tab-system .rpt{--rpt-top:var(--hdr)}
+
+/* ---------- bottom nav + sheet (phones only) ---------- */
+.bnav,.sheet{display:none}
+@media(max-width:600px){
+ :root{--hdr:56px}
+ body{font-size:14px}
+ main{padding:10px 10px calc(76px + env(safe-area-inset-bottom))}
+ .top{gap:8px;padding:0 10px;height:var(--hdr)}
+ .tabs,.right .lo{display:none}
+ .logo .nm small,#liveAge{display:none}
+ .logo .nm{font-size:14px}
+ .right{margin-left:auto;gap:8px}
+ .seg button{min-height:44px;min-width:48px;font-size:13px}
+ .live{font-size:13px}
+ .fx{font-size:13px}
+ .grid{gap:8px}
+ .card{padding:10px 12px}.card .v{font-size:18px}.card .l,.card .s,.hint,.foot,.sum .l{font-size:13px}
+ .chart{height:280px}.chart.sm{height:230px}.chart.lg{height:340px}
+ .badge{font-size:13px;padding:2px 8px}
+ .chip{min-height:44px;padding:0 16px;font-size:14px;border-radius:22px}
+ .sel,.btn{min-height:44px;font-size:14px}
+ .deb .dh{min-height:44px;padding:10px 12px}
+ .deb .db{padding:0 12px 12px}
+ .ph{padding:10px 12px}
+ .banner{font-size:13px}
+ .cnt{font-size:12px}
+ /* every data table becomes a card list */
+ .tw{overflow:visible}
+ table.cards,table.cards tbody,table.cards tr,table.cards td{display:block;width:100%;white-space:normal}
+ table.cards thead{display:none}
+ table.cards.sortable thead{display:block}
+ table.cards.sortable thead tr{display:flex;flex-wrap:wrap;gap:6px;padding:10px 12px;border-bottom:1px solid var(--line)}
+ table.cards.sortable th{position:static;display:flex;align-items:center;min-height:44px;padding:0 14px;border:1px solid var(--line);border-radius:22px;font-size:13px;color:var(--tx);background:var(--panel2)}
+ table.cards tbody tr{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px 12px;padding:12px 14px;border-bottom:1px solid var(--line)}
+ table.cards td{border:0;padding:0;text-align:left;min-width:0;overflow-wrap:anywhere;font-size:14px}
+ table.cards td::before{content:attr(data-label);display:block;color:var(--mut);font-size:13px;line-height:1.3}
+ table.cards td.pt{grid-column:1;order:-2;font-size:16px;font-weight:600}
+ table.cards td.pt::before{display:none}
+ table.cards td.pm{grid-column:2;order:-1;text-align:right;font-size:16px;font-weight:600}
+ table.cards td.wrap{grid-column:1/-1;min-width:0;max-width:none}
+ table.cards td.flash{animation:none}
+ tbody tr:hover{background:none}
+ /* bottom bar */
+ .bnav{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:30;background:var(--panel);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom)}
+ .bnav a,.bnav button{flex:1;min-width:0;min-height:56px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;background:none;border:0;border-top:2px solid transparent;color:var(--mut);font:inherit;font-size:12px;cursor:pointer;position:relative}
+ .bnav span{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+ .bnav .on{color:var(--acc);border-top-color:var(--acc);background:rgba(252,213,53,.06)}
+ .bnav svg{display:block}
+ .bnav .cnt{position:absolute;top:4px;left:calc(50% + 6px);margin:0}
+ .sheet:not([hidden]){display:block;position:fixed;inset:0;z-index:40;background:rgba(0,0,0,.6)}
+ .sheet .sp{position:absolute;left:0;right:0;bottom:0;background:var(--panel);border-radius:14px 14px 0 0;border-top:1px solid var(--line);padding:8px 0 calc(8px + env(safe-area-inset-bottom));animation:up .2s ease-out}
+ .sheet .gr{width:36px;height:4px;border-radius:2px;background:var(--line);margin:4px auto 8px}
+ .sheet a,.sheet button{display:flex;align-items:center;gap:14px;width:100%;min-height:56px;padding:0 20px;background:none;border:0;color:var(--tx);font:inherit;font-size:16px;text-align:left;cursor:pointer}
+ .sheet a.on{color:var(--acc)}
+ .sheet form{margin:0;border-top:1px solid var(--line)}
+ .sheet button{color:var(--dn)}
+ .sheet svg{flex:none}
+ .deb .dh .sp{flex-basis:100%;height:0}
+ .ag{grid-template-columns:1fr}
+}
+@keyframes up{from{transform:translateY(40px);opacity:.5}to{transform:none;opacity:1}}
+@media(prefers-reduced-motion:reduce){
+ *,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}
+}
+/* mid-width desktops: 8 tabs + unit toggle must fit without scrolling the tab row */
+@media(min-width:601px) and (max-width:1440px){.tabs a{padding:15px 8px}#liveAge{display:none}}
