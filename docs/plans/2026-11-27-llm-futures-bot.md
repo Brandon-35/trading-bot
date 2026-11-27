@@ -128,7 +128,7 @@ Reading: the result depends almost entirely on the win rate the LLM actually ach
 ## Acceptance
 <!-- Tick an item only with proof: replace the placeholder with `<command → decisive output line | screenshot path | URL>`; a tick without evidence counts as open. -->
 Build acceptance (one build session):
-- [ ] AC1 — signed `fetch_balance` from server-brandon-service with an IP-whitelisted key works; the key shows withdrawals disabled — evidence: <fill when ticked>
+- [x] AC1 — signed `fetch_balance` from server-brandon-service with an IP-whitelisted key works; the key shows withdrawals disabled — evidence: `docker run … python -m trader.key_check` on server-brandon-service → `PASS signed fetch_balance` + apiRestrictions `ipRestrict True, enableWithdrawals False, enableFutures True`, spot/margin/transfer all False (2026-11-27)
 - [x] AC2 — risk unit tests cover sizing, lot rounding, min-notional skip, SL floor/ceiling, RR, daily stop, total stop — evidence: `cd bot && uv run pytest -q` → `25 passed` (tests/test_risk.py 9 cases incl. min notional, margin cap, halts; Limits refuse risk > 2 % / leverage > 5)
 - [ ] AC3 — each of the 4 providers returns a pydantic-valid decision from the real API (schema mode recorded per provider) — evidence: <fill when ticked>
 - [x] AC4 — invalid LLM output (bad JSON, no SL, SL wrong side, RR 1.0) results in no order — evidence: tests/test_bot.py `test_bad_entries_place_no_order` (5 cases, broker.calls == []) + `test_llm_garbage_means_hold` → passed; live smoke on server with a bad key: `llm_call {"error": "AuthenticationError 401"}`, no order
@@ -705,3 +705,8 @@ Operational milestones (weeks later, tracked on the GitHub issue, not ticked in 
 ## Report — 2026-11-27T05:43:32Z
 - action: submit
 - inputs provided: BINANCE_API_KEY, BINANCE_API_SECRET, LIVE_GO (values stored outside the docs)
+
+## Live setup — 2026-11-27
+- Owner chose "live now" on the report page (no demo, no paper). Server `.env` written (600): BINANCE_* + LIVE_CONFIRM; no LLM key given yet.
+- OpenRouter added as provider (`OPENROUTER_API_KEY`, default model `anthropic/claude-haiku-5.5`, override `OPENROUTER_MODEL`).
+- Futures wallet is empty (spot USDT ~0): AC5–AC7 live order check and the live start wait for 100 USDT in USDⓈ-M Futures and one LLM key.
