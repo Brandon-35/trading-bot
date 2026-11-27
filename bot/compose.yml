@@ -76,6 +76,10 @@ services:
       LIVE_CONFIRM: ${LIVE_CONFIRM:-}
       FLOOR_EQUITY: ${FLOOR_EQUITY:-70}   # full stop below this equity (USDT)
       BOT_NAME: live
+      BOT_START: ${BOT_START:-2026-11-27T06:25:00Z}   # bot fills before this are the owner's
+      START_FUTURES: ${START_FUTURES:-18.7392}
+      LLM_CREDIT: ${LLM_CREDIT:-2.0}
+      LLM_USAGE_BASELINE: ${LLM_USAGE_BASELINE:-0.00267}
       DB_PATH: /data/live.db
       BINANCE_API_KEY: ${BINANCE_API_KEY:-}
       BINANCE_API_SECRET: ${BINANCE_API_SECRET:-}
@@ -97,6 +101,11 @@ services:
       TZ: Asia/Ho_Chi_Minh
       DASH_USER: ${DASH_USER:-brandon}
       DASH_PASSWORD: ${DASH_PASSWORD:-}
+      BOT_START: ${BOT_START:-2026-11-27T06:25:00Z}   # bot fills before this are the owner's
+      START_FUTURES: ${START_FUTURES:-18.7392}
+      LLM_CREDIT: ${LLM_CREDIT:-2.0}
+      LLM_USAGE_BASELINE: ${LLM_USAGE_BASELINE:-0.00267}
+      SYMBOLS: ${SYMBOLS:-BTC/USDT:USDT,ETH/USDT:USDT,SOL/USDT:USDT}
     ports: ["127.0.0.1:8090:8080"]
     networks: [default, edge]
     volumes:

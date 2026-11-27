@@ -10,6 +10,8 @@ import time
 
 import ccxt
 
+from .sync import PREFIX, cid
+
 log = logging.getLogger("exchange")
 
 
@@ -28,6 +30,7 @@ def make_ccxt(mode: str) -> ccxt.binanceusdm:
 class Binance:
     def __init__(self, ex: ccxt.binanceusdm, symbols: list[str], leverage: int):
         self.data = self.ex = ex
+        self.after_order = lambda symbol: None   # main sets it: sync fills so ownership is known right away
         ex.load_markets()
         # setup must never block startup (e.g. a position is already open): reconcile has to run
         for call, args in [(ex.set_position_mode, (False,))] + \
@@ -57,12 +60,22 @@ class Binance:
                 out[p["symbol"]] = {"side": p["side"], "qty": float(p["contracts"]), "entry": float(p["entryPrice"])}
         return out
 
+    def _bot_triggers(self, symbol) -> list:
+        """Only the bot's own trigger orders; the owner's hand-placed stops are never counted or cancelled."""
+        return [o for o in self.ex.fetch_open_orders(symbol, params={"trigger": True}) if cid(o).startswith(PREFIX)]
+
     def protective_count(self, symbol) -> int:
-        return len(self.ex.fetch_open_orders(symbol, params={"trigger": True}))
+        return len(self._bot_triggers(symbol))
 
     def cancel_protective(self, symbol):
-        if self.protective_count(symbol):
-            self.ex.cancel_all_orders(symbol, params={"trigger": True})
+        for o in self._bot_triggers(symbol):
+            self.ex.cancel_order(o["id"], symbol, {"trigger": True})
+
+    def _synced(self, symbol):
+        try:
+            self.after_order(symbol)
+        except Exception as e:
+            log.warning("fill sync %s: %s", symbol, type(e).__name__)
 
     def open(self, symbol, side, qty, sl, tp):
         """Market entry, then SL and TP. Any failure (even an ambiguous entry timeout) flattens and re-raises."""
@@ -80,6 +93,7 @@ class Binance:
         except Exception:
             self._flatten(symbol, exit_side, qty)
             raise
+        self._synced(symbol)
         return order
 
     def _flatten(self, symbol, exit_side, qty):
@@ -94,6 +108,7 @@ class Binance:
                 time.sleep(1)
         if not self.positions().get(symbol):
             self.cancel_protective(symbol)
+        self._synced(symbol)
 
     def close(self, symbol):
         """Exit first, cancel protection second, so a failed exit never leaves a naked position."""
@@ -102,6 +117,7 @@ class Binance:
             self.ex.create_order(symbol, "market", "sell" if p["side"] == "long" else "buy", p["qty"], None,
                                  {"reduceOnly": True})
         self.cancel_protective(symbol)
+        self._synced(symbol)
 
     def tick(self):
         pass

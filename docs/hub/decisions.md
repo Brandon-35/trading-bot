@@ -16,3 +16,4 @@ verified_commit: 1728129
 | D8 | 2026-11-27 | SL/TP = reduceOnly + số lượng, không closePosition | đường ccxt cho closePosition chưa kiểm chứng; reconcile huỷ lệnh thừa | active |
 | D9 | 2026-11-27 | Arena 4 model paper trước khi live | owner chuyển sang chạy live ngay | superseded |
 | D10 | 2026-11-27 | Tháng đầu chạy live với 18 USDT, `FLOOR_EQUITY=12` (~2/3 vốn, cùng tỉ lệ 70/100) | owner test 1 tháng với vốn nhỏ; BTC thường bị bỏ qua vì min notional 50 USDT > 5x của 18 USDT | active |
+| D11 | 2026-11-27 | Lệnh của bot = clientOrderId bắt đầu `x-cvBPrNm9` và sau BOT_START; mọi số liệu bot + reconcile/floor/max_positions chỉ tính vị thế của bot | owner cũng trade tay trên cùng ví; bot không được đóng lệnh tay | active |

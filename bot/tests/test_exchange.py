@@ -60,12 +60,24 @@ def test_close_exits_before_cancelling():
     fake = FakeCcxt()
     fake.pos[S] = 1.0
     calls = []
-    fake.cancel_all_orders = lambda s, params=None: calls.append("cancel")
-    fake.fetch_open_orders = lambda s, params=None: ["x"] if "exit" not in fake.orders else ["x"]
+    fake.cancel_order = lambda i, s, params=None: calls.append("cancel")
+    fake.fetch_open_orders = lambda s, params=None: [{"id": 1, "clientOrderId": "x-cvBPrNm9z"}]
     orig = fake.create_order
     fake.create_order = lambda *a, **k: (calls.append("exit"), orig(*a, **k))[1]
     broker(fake).close(S)
     assert calls == ["exit", "cancel"]
+
+
+def test_cancel_protective_leaves_hand_orders_alone():
+    fake = FakeCcxt()
+    cancelled = []
+    fake.fetch_open_orders = lambda s, params=None: [{"id": 1, "clientOrderId": "x-cvBPrNm9a"},
+                                                      {"id": 2, "clientOrderId": "web_hand"}, {"id": 3, "info": {}}]
+    fake.cancel_order = lambda i, s, params=None: cancelled.append((i, params))
+    b = broker(fake)
+    assert b.protective_count(S) == 1
+    b.cancel_protective(S)
+    assert cancelled == [(1, {"trigger": True})]
 
 
 class FakeData:

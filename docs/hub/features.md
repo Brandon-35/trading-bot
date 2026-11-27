@@ -14,4 +14,7 @@ verified_commit: 1728129
 | bot | Paper broker + arena nhiều model | shipped | 2026-11-27 |
 | alerts | Báo động Discord webhook | shipped | 2026-11-27 |
 | dashboard | Trang vốn, vị thế, lệnh, quyết định LLM, chi phí (trang đăng nhập, phiên 7 ngày, nút đăng xuất) | shipped | 2026-11-27 |
-| bot | Chạy tiền thật 24/7 (service `live`) | building | - |
+| dashboard | Giao diện v2 tiếng Việt màu Binance: biểu đồ nến + điểm vào/ra của bot, đường giá trị vốn (vốn đầu + credit LLM), lời/lỗ theo ngày, vị thế realtime, lịch sử lệnh, quyết định LLM | shipped | 2026-11-27 |
+| dashboard | Tab Tài khoản: lời/lỗ toàn bộ vòng đời Futures (file xuất Binance từ 2019 + API), theo tháng, theo cặp | shipped | 2026-11-27 |
+| bot | Chỉ quản lý vị thế/lệnh của chính bot (clientOrderId `x-cvBPrNm9`); lệnh tay không bị đụng | shipped | 2026-11-27 |
+| bot | Chạy tiền thật 24/7 (service `live`) | shipped | 2026-11-27 |

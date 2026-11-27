@@ -9,7 +9,7 @@ import os
 import sys
 import time
 
-from . import notify
+from . import notify, sync
 from .exchange import Binance, Paper, make_ccxt
 from .llm import LLM
 from .market import snapshot
@@ -29,6 +29,32 @@ def halted(store: Store) -> bool:
 class Bot:
     def __init__(self, broker, llm, store: Store, limits: Limits, mode: str):
         self.broker, self.llm, self.store, self.limits, self.mode = broker, llm, store, limits, mode
+        self.foreign: set[str] = set()   # symbols holding a position the bot does not own (hand trades)
+        self._warned: dict[str, float] = {}
+        if mode != "paper":
+            sync.init(store.db)
+
+    def owned(self, symbol: str, p: dict) -> bool:
+        """A position is the bot's only if the bot's own fills add up to exactly its size; unknown = not ours."""
+        if self.mode == "paper":
+            return True
+        q = sync.bot_open_qty(self.store.db, sync.bot_start_ms()).get(symbol, 0.0)
+        return abs(q - (p["qty"] if p["side"] == "long" else -p["qty"])) < 1e-9
+
+    def mine(self, positions: dict) -> dict:
+        """Bot-owned positions on bot symbols; everything else is left strictly alone."""
+        out, self.foreign = {}, set()
+        for s, p in positions.items():
+            if s not in SYMBOLS:
+                continue
+            if self.owned(s, p):
+                out[s] = p
+            else:
+                self.foreign.add(s)
+                if time.time() - self._warned.get(s, 0) > 3600:
+                    self._warned[s] = time.time()
+                    log.info("%s: position is not the bot's, ignored", s)
+        return out
 
     def day_start_equity(self, equity: float) -> float:
         """Equity at the start of the UTC day: the last equity seen before midnight, so downtime over
@@ -46,13 +72,14 @@ class Bot:
         """The exchange is the source of truth: no position without both protective orders, no orphans."""
         if self.mode == "paper":
             return
-        for s in set(SYMBOLS) | set(positions):
+        mine = self.mine(positions)
+        for s in SYMBOLS:
             n = self.broker.protective_count(s)
-            if s in positions and n < 2:
+            if s in mine and n < 2:
                 self.broker.close(s)
                 self.store.log("reconcile_close", symbol=s, protective=n)
                 notify.send(f"⚠️ {s}: position had {n}/2 protective orders, closed at market")
-            elif s not in positions and n:
+            elif s not in positions and n:   # bot trigger orders only (protective_count)
                 self.broker.cancel_protective(s)
                 self.store.log("reconcile_cancel", symbol=s, orders=n)
 
@@ -60,9 +87,8 @@ class Bot:
         if halted(self.store):
             log.info("halted, waiting for --clear-halt")
             return
-        positions = self.broker.positions()
-        self.reconcile(positions)
-        positions = self.broker.positions()
+        self.reconcile(self.broker.positions())
+        positions = self.mine(self.broker.positions())
         equity = self.broker.equity()
         day_start = self.day_start_equity(equity)
         self.store.log("equity", equity=equity, positions=positions)
@@ -86,7 +112,7 @@ class Bot:
         for d in decisions:
             reason = self.act(d, positions, ref, equity, stop)
             self.store.log("decision", **d.model_dump(), accepted=reason is None, reject=reason)
-            positions = self.broker.positions()
+            positions = self.mine(self.broker.positions())
 
     def act(self, d, positions, ref, equity, stop) -> str | None:
         if d.symbol not in SYMBOLS:
@@ -103,6 +129,8 @@ class Bot:
             return "daily loss stop active"
         if d.symbol in positions:
             return "position already open"
+        if d.symbol in self.foreign:
+            return "manual position on this symbol"
         if len(positions) >= self.limits.max_positions:
             return "max positions reached"
         price, atr = ref[d.symbol]["price"], ref[d.symbol]["atr"]
@@ -155,6 +183,9 @@ def main():
                     state=store.last("paper_state"), save=lambda st: store.log("paper_state", **st))
               if mode == "paper" else Binance(ex, SYMBOLS, limits.leverage))
     bot = Bot(broker, LLM(), store, limits, mode)
+    sync_last: dict = {}
+    if mode != "paper":
+        broker.after_order = lambda s: sync.sync_fills(ex, store.db, [s], sync.bot_start_ms())
     if "--once" in sys.argv:
         bot.cycle()
         return
@@ -164,6 +195,8 @@ def main():
         try:
             broker.tick()
             bot.reconcile(broker.positions())        # live/demo: protection checked every 20 s, also right after start
+            if mode != "paper":
+                sync.run(ex, store.db, SYMBOLS, sync_last)
             now = time.time()
             hour_key = time.strftime("%Y-%m-%dT%H", time.gmtime(now))
             done = store.last("cycle")
