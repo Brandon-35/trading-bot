@@ -44,6 +44,9 @@ PROVIDERS = [
     ("ANTHROPIC_API_KEY", "https://api.anthropic.com/v1/", "claude-haiku-5-5", "json_schema", 0.10, 0.50),
     ("ZAI_API_KEY", "https://api.z.ai/api/paas/v4", "glm-5.3-flash", "json_object", 0.15, 0.50),
     ("MOONSHOT_API_KEY", "https://api.moonshot.ai/v1", "kimi-k3.1-pro", "json_object", 2.00, 10.00),
+    # shortcut: price is the default model's; set LLM_PRICE_* via explicit LLM_* env when OPENROUTER_MODEL changes
+    ("OPENROUTER_API_KEY", "https://openrouter.ai/api/v1", os.getenv("OPENROUTER_MODEL", "anthropic/claude-haiku-5.5"),
+     "json_schema", 0.10, 0.50),
 ]
 
 

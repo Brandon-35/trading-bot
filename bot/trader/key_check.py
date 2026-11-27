@@ -10,7 +10,7 @@ import ccxt
 
 def main():
     ex = ccxt.binanceusdm({"apiKey": os.environ["BINANCE_API_KEY"], "secret": os.environ["BINANCE_API_SECRET"]})
-    bal = ex.fetch_balance()["USDT"]
+    bal = ex.fetch_balance().get("USDT") or {}   # absent while the futures wallet is empty
     print(f"PASS signed fetch_balance: USDT total={bal.get('total')} free={bal.get('free')}")
     r = ccxt.binance({"apiKey": os.environ["BINANCE_API_KEY"],
                       "secret": os.environ["BINANCE_API_SECRET"]}).sapi_get_account_apirestrictions()

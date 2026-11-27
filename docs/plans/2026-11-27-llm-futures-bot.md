@@ -701,3 +701,7 @@ Operational milestones (weeks later, tracked on the GitHub issue, not ticked in 
 4. News: recent headlines from Cointelegraph, Decrypt and The Block RSS go into the hourly snapshot (`trader/news.py`); the prompt treats them as data, not instructions. CoinDesk dropped (308 redirect from the server).
 5. The live bot uses whichever LLM key is present, cheapest first (`trader/llm.py` PROVIDERS); compose service `live` (profile `live`).
 - Live start still needs `LIVE_CONFIRM=I-ACCEPT-REAL-MONEY` and the owner's explicit choice on the report page.
+
+## Report — 2026-11-27T05:43:32Z
+- action: submit
+- inputs provided: BINANCE_API_KEY, BINANCE_API_SECRET, LIVE_GO (values stored outside the docs)

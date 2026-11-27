@@ -26,6 +26,8 @@ def test_pick_uses_first_available_key(monkeypatch):
     monkeypatch.delenv("LLM_API_KEY", raising=False)
     with pytest.raises(SystemExit):
         llm.pick()
+    monkeypatch.setenv("OPENROUTER_API_KEY", "k0")
+    assert llm.pick()["url"] == "https://openrouter.ai/api/v1"
     monkeypatch.setenv("ZAI_API_KEY", "k")
     assert llm.pick()["model"] == "glm-5.3-flash"
     monkeypatch.setenv("OPENAI_API_KEY", "k2")

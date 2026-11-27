@@ -41,14 +41,14 @@ class Binance:
         return self.ex.market(symbol)
 
     def _balance(self):
-        return self.ex.fetch_balance()["USDT"]
+        return self.ex.fetch_balance().get("USDT") or {"total": 0, "free": 0}   # absent while the wallet is empty
 
     def equity(self) -> float:
         info = self.ex.fetch_balance()["info"]
-        return float(info.get("totalMarginBalance") or self._balance()["total"])
+        return float(info.get("totalMarginBalance") or self._balance()["total"] or 0)
 
     def free_margin(self) -> float:
-        return float(self._balance()["free"])
+        return float(self._balance()["free"] or 0)
 
     def positions(self) -> dict:
         out = {}

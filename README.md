@@ -38,7 +38,7 @@ docker compose --profile live up -d --build                    # real money: BIN
 docker compose exec live python -m trader.report /data/live.db
 ```
 
-The live bot uses the first LLM key that is set (OpenAI, Anthropic, z.ai, Moonshot). Each hour it gets
+The live bot uses the first LLM key that is set (OpenAI, Anthropic, z.ai, Moonshot, OpenRouter). Each hour it gets
 prices, indicators and recent crypto headlines (Cointelegraph, Decrypt, The Block); alerts go to
 `DISCORD_WEBHOOK_URL`. Before the first live start run `python -m trader.key_check` and
 `MODE=live LIVE_CONFIRM=I-ACCEPT-REAL-MONEY python -m trader.demo_check` (~12 USDT test orders).
