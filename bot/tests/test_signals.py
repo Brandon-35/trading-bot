@@ -122,3 +122,16 @@ def test_store_derivs_writes_row():
     sym, f, oi, ls, tk, t = db.execute("SELECT symbol, funding, oi, ls, taker, time FROM deriv").fetchone()
     assert (sym, f, oi, ls, tk) == ("SOL/USDT:USDT", 0.0001, 1000.0, 1.5, 0.9)
     assert abs(t - time.time()) < 900
+
+
+def test_derivs_gives_latest_values_and_4h_oi_change():
+    db = sqlite3.connect(":memory:")
+    assert sg.derivs(db, "SOL") == {}                          # no table
+    db.execute("CREATE TABLE deriv (symbol TEXT, time INTEGER, funding REAL, oi REAL, ls REAL, taker REAL,"
+               " PRIMARY KEY(symbol,time))")
+    h = 3600 * 1000
+    db.execute("INSERT INTO deriv VALUES ('SOL', 0, 0.0001, 50, 1.0, 1.0)")          # older than 4 h: ignored
+    db.execute(f"INSERT INTO deriv VALUES ('SOL', {2 * h}, 0.0001, 100, 1.2, 0.9)")
+    db.execute(f"INSERT INTO deriv VALUES ('SOL', {6 * h}, 0.0002, 110, 1.5, 1.1)")
+    assert sg.derivs(db, "SOL") == {"funding": 0.0002, "oi": 110, "oi_change_pct_4h": 10.0, "ls": 1.5, "taker": 1.1}
+    assert sg.derivs(db, "ADA") == {}

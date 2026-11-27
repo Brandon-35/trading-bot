@@ -10,6 +10,8 @@ import os
 import sys
 import time
 
+import httpx
+
 from . import notify, sync
 from .exchange import Binance, Paper, make_ccxt
 from .llm import LLM
@@ -273,7 +275,7 @@ class BotV2(Bot):
             pos = {"symbol": s, "side": st["side"], "qty": p["qty"], "entry": st["entry"], "stop": st["stop"],
                    "tp": st["tp"], "atr": st["atr"], "mark": price, "tp1_done": st["tp1_done"],
                    "r_now": (price - st["entry"]) * sg / st["dist0"], "hours_open": (time.time() * 1000 - st["opened"]) / 3.6e6}
-            res = self.committee.manage(pos, {"time_utc": time.strftime("%Y-%m-%d %H:%M", time.gmtime())}, self.store)
+            res = self.committee.manage(pos, self._ctx(s), self.store)
             self.store.log("manage", symbol=s, **{k: res.get(k) for k in ("action", "new_stop", "rationale")})
             if res.get("action") == "close":
                 self.broker.close(s)
@@ -301,6 +303,20 @@ class BotV2(Bot):
         midnight = int(time.time()) - (t.tm_hour * 3600 + t.tm_min * 60 + t.tm_sec)
         return self.store.db.execute("SELECT COUNT(*) FROM events WHERE kind='trade_open' AND ts >= ?",
                                      (midnight,)).fetchone()[0]
+
+    def _ctx(self, s: str, setup: dict | None = None) -> dict:
+        """Market context for the committee: derivatives for the symbol, Fear & Greed, BTC trend."""
+        f = (setup or {}).get("features") or {}
+        return {"time_utc": time.strftime("%Y-%m-%d %H:%M", time.gmtime()),
+                "derivs": self.signals.derivs(self.store.db, s), "fear_greed": self._fear_greed(),
+                "btc": {k: f[k] for k in ("btc_trend", "btc_strength") if k in f}}
+
+    @staticmethod
+    def _fear_greed():
+        try:
+            return int(httpx.get("https://api.alternative.me/fng/?limit=1", timeout=10).json()["data"][0]["value"])
+        except Exception:
+            return None
 
     @staticmethod
     def _news() -> list:
@@ -368,7 +384,7 @@ class BotV2(Bot):
             if self.budget and not self.budget.ok():
                 return reject("LLM daily budget used")
             recent = [{k: e.get(k) for k in ("symbol", "side", "r", "why")} for e in self.store.all("trade_close")[-10:]]
-            ctx = {"time_utc": time.strftime("%Y-%m-%d %H:%M", time.gmtime()), "base": round(base, 2),
+            ctx = self._ctx(s, setup) | {"base": round(base, 2),
                    "news": self._news(),
                    "open_positions": {x: {"side": self.state[x]["side"], "entry": self.state[x]["entry"],
                                           "stop": self.state[x]["stop"]} for x in mine}}
