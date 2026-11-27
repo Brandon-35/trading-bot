@@ -23,6 +23,7 @@ verified_commit: 1728129
 | DASH_PASSWORD | mật khẩu dashboard | dashboard | yes |
 | LEVERAGE | đòn bẩy, tối đa 5 | bot | no |
 | RISK_PCT | rủi ro mỗi lệnh, tối đa 0.02 | bot | no |
+| FLOOR_EQUITY | dừng hẳn khi equity dưới mức này (USDT), mặc định 70 | bot (live) | no |
 | SYMBOLS | danh sách cặp | bot | no |
 | DB_PATH | file SQLite | bot | no |
 | PAPER_START | vốn paper | bot | no |

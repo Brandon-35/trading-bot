@@ -146,7 +146,8 @@ def main():
         store.log("halt_clear")
         print("halt cleared")
         return
-    limits = Limits(leverage=int(os.getenv("LEVERAGE", "5")), risk_pct=float(os.getenv("RISK_PCT", "0.02")))
+    limits = Limits(leverage=int(os.getenv("LEVERAGE", "5")), risk_pct=float(os.getenv("RISK_PCT", "0.02")),
+                    floor_equity=float(os.getenv("FLOOR_EQUITY", "70")))
     ex = make_ccxt(mode)
     on_close = lambda **t: (store.log("trade_close", **t),
                             notify.send(f"{t['why']} {t['symbol']} pnl {t['pnl']:+.2f}"))
