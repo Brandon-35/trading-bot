@@ -179,3 +179,8 @@ th.sort:focus-visible{outline:1px solid var(--acc)}
 }
 /* mid-width desktops: 8 tabs + unit toggle must fit without scrolling the tab row */
 @media(min-width:601px) and (max-width:1440px){.tabs a{padding:15px 8px}#liveAge{display:none}}
+/* sub-nav for tabs grouped under one nav entry (Lịch sử, Thử nghiệm) */
+.subnav{margin:0 0 12px;width:max-content;max-width:100%}
+.subnav a{font-weight:600;font-size:13px;background:var(--panel2);color:var(--mut);padding:8px 14px;white-space:nowrap}
+.subnav a.on{background:var(--acc);color:#181a20}
+@media(max-width:600px){.subnav{width:100%}.subnav a{flex:1;text-align:center;min-height:44px;display:flex;align-items:center;justify-content:center}}
